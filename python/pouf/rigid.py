@@ -1,12 +1,8 @@
-import Sofa
 
 import quat
-
 import numpy as np
 
 from . import concat
-
-# TODO move to math ?
 
 class Frame:
     # a rigid frame, group operations are available.
@@ -188,36 +184,35 @@ class Body:
             visual_map = visual.createObject('RigidMapping', 
                                              template = 'Rigid' + ', ' + visual_template, 
                                              input = '@../')
-            # collision model
-            if self.collision != None:
-                collision = user.createChild('collision')
+        # collision model
+        if self.collision != None:
+            collision = user.createChild('collision')
                 
-                collision.createObject("MeshObjLoader", 
-                                       name = 'loader', 
-                                       filename = self.collision,
-                                       scale3d = concat(self.scale) )
+            collision.createObject("MeshObjLoader", 
+                                   name = 'loader', 
+                                   filename = self.collision,
+                                   scale3d = concat(self.scale) )
             
-                collision.createObject('MeshTopology', 
-                                       name = 'topology',
-                                       triangles = '@loader.triangles')
+            collision.createObject('MeshTopology', 
+                                   name = 'topology',
+                                   triangles = '@loader.triangles')
+            
+            collision.createObject('MechanicalObject',
+                                   name = 'dofs',
+                                   position = '@loader.position')
                         
-                collision.createObject('MechanicalObject',
-                                       name = 'dofs',
-                                       position = '@loader.position')
-                        
-                model = collision.createObject('TriangleModel', 
-                                               name = 'model',
-                                               template = 'Vec3d',
-                                               contactFriction = self.mu)
-                if self.group != None:
-                    model.group = self.group                        
-                        
-                    collision.createObject('RigidMapping',
-                                           template = 'Rigid,Vec3d',
-                                           input = '@../',
-                                           output = '@./')
-
-            self.node = res
-            self.user = user
+            model = collision.createObject('TriangleModel', 
+                                           name = 'model',
+                                           template = 'Vec3d',
+                                           contactFriction = self.mu)
+            if self.group != None:
+                model.group = self.group                        
                 
+            collision.createObject('RigidMapping',
+                                   template = 'Rigid,Vec3d',
+                                   input = '@../',
+                                   output = '@./')
+
+        self.node = res
+        self.user = user
         return res
