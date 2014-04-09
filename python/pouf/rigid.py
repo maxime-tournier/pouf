@@ -1,5 +1,6 @@
 import Sofa
-from subprocess import Popen, PIPE
+
+import subprocess
 
 import quat
 import numpy as np
@@ -59,26 +60,32 @@ class MassInfo:
         pass
 
 # front-end to sofa GenerateRigid tool. density unit is kg/m^3
-def generate_rigid(filename, density = 1000.0):
+def generate_rigid(filename, density = 1000.0, scale = [1, 1, 1]):
     cmd = Sofa.build_dir() + '/bin/GenerateRigid'
-    args = filename
+
+    tmp = '.tmp.rigid'
+    args = [filename,
+            tmp,
+            density] + scale
+    
     try:
-        output = Popen([cmd, args], stdout=PIPE)
-        line = output.stdout.read().split('\n')
+        output = subprocess.call([cmd] + map(str, args))
+        with open(tmp) as f:
+            line = f.readlines()
+
     except OSError:
         # try the debug version
         cmd += 'd'
         
         try:
-            output = Popen([cmd, args], stdout=PIPE)
-            line = output.stdout.read().split('\n')
+            output = subprocess.call([cmd] + map(str, args))
+            with open(tmp) as f:
+                line = f.readlines()
         except OSError:
             print 'error when calling GenerateRigid, do you have GenerateRigid built in SOFA ?'
             raise
 
-    start = 2
-        
-    # print line 
+    start = 1
         
     mass = float( line[start].split(' ')[1] )
     volm = float( line[start + 1].split(' ')[1] )
@@ -119,7 +126,7 @@ class Body:
         # TODO more if needed (scale, color)
                 
     def mass_from_mesh(self, name, density = 1000.0):
-        info = generate_rigid(name, density)
+        info = generate_rigid(name, density, self.scale)
         
         self.mass = info.mass
         
@@ -131,9 +138,19 @@ class Body:
                 
         self.offset = Frame()
         self.offset.translation = info.com
-                
-        # TODO handle principal axes
-                
+
+        # TODO handle principal axes ?
+
+
+        # scaling ?
+        if self.scale != [1, 1, 1]:
+            print "handling scaling"
+            s = np.array(self.scale)
+            vol = s[0] * s[1] * s[2]
+            
+            mass = vol * self.mass
+            com = vol * s * np.array(info.com)
+            
 
     def insert(self, node):
         res = node.createChild( self.name )

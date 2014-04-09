@@ -23,9 +23,6 @@ def _make_rigid(name, mesh, position = None, density = 1000 ):
         
     return res
 
-# TODO: cop at the end of time step
-# TODO: support polygon
-
 class Humanoid:
 
     # TODO add some parameters yo
@@ -274,7 +271,7 @@ class Humanoid:
         return res
 
 
-        # angular momentum about center of mass
+    # center of mass
     def com(self):
         res = vec( [0, 0, 0] )
         
@@ -285,7 +282,7 @@ class Humanoid:
         return res / self.mass
 
 
-
+    # TODO sort these two out ?
     # cop 
     def good_cop(self, node):
         res = None
