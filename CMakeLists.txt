@@ -12,6 +12,8 @@ set(HEADER_FILES
 	tool/assemble.h
 	tool/find_insert.h
 	tool/graph_vector.h
+
+	collision/triangle_model.h
 	
 	)
 
@@ -25,6 +27,7 @@ set(SOURCE_FILES
 	tool/assemble.cpp
 	tool/graph_vector.cpp
 
+	collision/triangle_model.cpp
 	)
 
 set(README_FILES

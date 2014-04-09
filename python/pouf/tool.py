@@ -12,19 +12,21 @@ def scene(root):
     node.dt = 0.01
     node.gravity = '0 -9.81 0'
 
-    node.createObject('DefaultPipeline', name = 'pipeline')
+
+    node.createObject('DefaultPipeline', name = 'pipeline', verbose = True)
+
     node.createObject('BruteForceDetection', name = 'detection')
-    
+
     proximity = node.createObject('NewProximityIntersection',
                                   name = 'proximity' )
 
     proximity.alarmDistance = 0.05
-    proximity.contactDistance = 0.01
+    proximity.contactDistance = 0.02
 
     manager = node.createObject('DefaultContactManager',
                                 name = 'manager',
                                 response = "FrictionCompliantContact",
-                                responseParams = "mu=1" )
+                                responseParams = "mu=0.7" )
     
     style = node.createObject('VisualStyle', 
                               name = 'style',
@@ -36,9 +38,7 @@ def scene(root):
     ode = node.createObject('pouf_solver',
                             name = 'ode',
                             warm_start = False,
-                            stabilization = True)
+                            stabilization = False)
     
-    group = node.createObject('CollisionGroup', 
-                              name = 'group' )
-
+    
     return scene 
