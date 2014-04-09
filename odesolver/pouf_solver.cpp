@@ -32,7 +32,9 @@ namespace odesolver {
 
 SOFA_DECL_CLASS(pouf_solver);
 
-int pouf_solverClass = core::RegisterObject("Example compliance solver using assembly").add< pouf_solver >();
+int pouf_solverClass = core::RegisterObject("Example compliance solver using assembly")
+	.add< pouf_solver >()
+	.addAlias("pouf.solver");
 
 using namespace sofa::defaulttype;
 using namespace sofa::helper;

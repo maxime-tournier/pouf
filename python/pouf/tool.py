@@ -35,7 +35,7 @@ def scene(root):
     
     scene = node.createChild('scene')
 
-    ode = node.createObject('pouf_solver',
+    ode = node.createObject('pouf.solver',
                             name = 'ode',
                             warm_start = False,
                             stabilization = False)
