@@ -27,49 +27,11 @@ using std::endl;
 
 namespace sofa {
 
-namespace simulation {
-
-// this class must be outside AssembledSolver in order to be dll exported on Windows
-struct SOFA_pouf_API aggregate_visitor : MechanicalVisitor {
-
-    core::MultiVecDerivId out, in;
-
-    aggregate_visitor(const sofa::core::MechanicalParams* mparams) : MechanicalVisitor(mparams) { }
-
-	// for some reason, copying in to out directly does not work...
-	Result fwdMappedMechanicalState(Node* node,
-									core::behavior::BaseMechanicalState* state) {
-        if( !node->forceField.empty() && node->forceField[0]->isCompliance.getValue() ) {
-            // dont erase if compliance is present.
-        } else {
-            state->resetForce(mparams, out.getId(state));
-        }
-
-        return RESULT_CONTINUE;
-	}
-
-	// erase force vector
-    Result fwdMechanicalState(Node* node,
-							  core::behavior::BaseMechanicalState* state) {
-        state->resetForce(mparams, out.getId(state));
-        return RESULT_CONTINUE;
-	}
-
-	// aggregation
-    void bwdMechanicalMapping(Node* node, core::BaseMapping* map) {
-		map->applyJT(mparams /* PARAMS FIRST */, out, out);
-	}
-
-};
-
-
-
-}
-
 namespace component {
 namespace odesolver {
 
 SOFA_DECL_CLASS(pouf_solver);
+
 int pouf_solverClass = core::RegisterObject("Example compliance solver using assembly").add< pouf_solver >();
 
 using namespace sofa::defaulttype;
