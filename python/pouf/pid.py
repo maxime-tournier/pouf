@@ -1,14 +1,14 @@
-
+from tool import concat
 
 # PID controllers, explicit and implicit
 
 
-class explicit:
+class Explicit:
     def __init__(self, dofs, **args):
         # gains
-        self.kp = -1
-        self.kd = -0
-        self.ki = -0
+        self.kp = 1
+        self.kd = 0
+        self.ki = 0
           
         self.pos = 0
         self.vel = 0
@@ -16,10 +16,10 @@ class explicit:
         # actuation basis
         self.basis = [0, 0, 0, 0, 0, 0]
         
-        if name not in args:
-            args[name] = 'pid'
+        if 'name' not in args:
+            args['name'] = 'pid'
 
-        name = args[name]
+        name = args['name']
 
         # insertion starts here
         self.node = dofs.getContext().createChild( name )
@@ -54,8 +54,8 @@ class explicit:
 
 
     def pid(self, dt):
-        p = self.dofs.position - self.pos
-        d = self.dofs.velocity - self.vel
+        p = self.pos - self.dofs.position
+        d = self.vel - self.dofs.velocity
         i = self.integral + dt * p
 
         return p, i, d
@@ -69,7 +69,7 @@ class explicit:
         self.map.init()         # TODO does this trigger apply ?
         
         e, e_sum, e_dot = self.pid(dt)
-        tau = self.kp * e + self.ki * e_sum + self.kd * e_dot
+        tau = self.kp * e  +  self.ki * e_sum  +  self.kd * e_dot
         self.integral = e_sum
         
         self.update(dt)
@@ -82,30 +82,26 @@ class explicit:
 
 
 
-
-
-
 #
-
-class implicit:
+class Implicit:
     
     def __init__(self, dofs, **args):
 
         # gains
-        self.kp = -1.0
-        self.kd = -0.0
-        self.ki = -0.0
+        self.kp = 1.0
+        self.kd = 0.0
+        self.ki = 0.0
           
         self.pos = 0.0
         
         # actuation basis
         self.basis = [0, 0, 0, 0, 0, 0]
         
-        if name not in args:
-            args[name] = 'pid'
+        if 'name' not in args:
+            args['name'] = 'pid'
 
         # insertion start here
-        self.node = dofs.getContext().createChild( name )
+        self.node = dofs.getContext().createChild( args['name'] )
 
         self.dofs = self.node.createObject('MechanicalObject', 
                                       name = 'dofs',
@@ -132,8 +128,8 @@ class implicit:
         self.map.offset = str(self.pos)
         self.map.init()         # TODO is apply triggered ?
 
-        stiff = - self.kp - self.ki * dt
-        damping = - self.kd
+        stiff = self.kp + self.ki * dt
+        damping = self.kd
         
         self.ff.compliance = 1.0 / stiff
         self.ff.damping = damping
@@ -141,7 +137,7 @@ class implicit:
         # trigger compliance matrix recomputation 
         self.ff.init()
 
-        self.set_force( -self.ki * self.integral )
+        self.set_force( self.ki * self.integral )
 
     # get force
     def get_force(self):
@@ -155,7 +151,7 @@ class implicit:
         
     # force applied at the end of time step
     def post_force(self):
-        return self.dofs.force - self.kd * float(self.dofs.velocity) + self.get_force()
+        return self.dofs.force + self.kd * float(self.dofs.velocity) + self.get_force()
 
     # call this during onEndAnimationStep
     def post_step(self, dt):
