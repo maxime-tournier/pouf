@@ -1,6 +1,9 @@
 import Sofa
 from Compliant import Tools
 
+from tool import concat
+
+import rigid
 
 class Base:
 
@@ -24,7 +27,7 @@ class Base:
         for n in nodes:
             pos = n.getObject('dofs').position
             s = concat(pos[0])
-            local = Frame().read( s )
+            local = rigid.Frame().read( s )
             self.append(n, local.inv() * frame)
         
     # joint dimension
@@ -54,9 +57,6 @@ class Base:
                              
         assert len(input) > 0
    
-        # now for the joint dofs
-        node = parent.createChild(self.name)
-        
         dofs = node.createObject('MechanicalObject', 
                                  template = 'Vec6d', 
                                  name = 'dofs', 
@@ -121,43 +121,46 @@ class Revolute(Base):
             setattr(self, k, args[k])
 
 
-        def insert(self, parent):
-            res = Base.insert(self, parent)
+    def insert(self, parent):
+        res = Base.insert(self, parent)
 
-            if self.lower_limit == None and self.upper_limit == None:
-                return res
-                
-            limit = res.createChild('limit')
-
-            dofs = limit.createObject('MechanicalObject', template = 'Vec1d')
-            map = limit.createObject('ProjectionMapping', template = 'Vec6d, Vec1d' )
-
-            limit.createObject('UniformCompliance', template = 'Vec1d', compliance = '0' )
-            limit.createObject('UnilateralConstraint');
-
-            # don't stabilize as we need to detect violated
-            # constraints first
-            # limit.createObject('Stabilization');
-
-            set = []
-            position = []
-            offset = []
-
-            if self.lower_limit != None:
-                set = set + [0] + self.dofs
-                position.append(0)
-                offset.append(self.lower_limit)
-
-            if self.upper_limit != None:
-                set = set + [0] + vec.minus(self.dofs)
-                position.append(0)
-                offset.append(- self.upper_limit)
-                
-            map.set = concat(set)
-            map.offset = concat(offset)
-            dofs.position = concat(position)
-
+        if self.lower_limit == None and self.upper_limit == None:
             return res
+
+        limit = res.createChild('limit')
+        
+        dofs = limit.createObject('MechanicalObject', template = 'Vec1d')
+        map = limit.createObject('ProjectionMapping', template = 'Vec6d, Vec1d' )
+
+        limit.createObject('UniformCompliance',
+                           template = 'Vec1d',
+                           compliance = '0' )
+            
+        limit.createObject('UnilateralConstraint');
+
+        # don't stabilize as we need to detect violated
+        # constraints first
+        # limit.createObject('Stabilization');
+
+        set = []
+        position = []
+        offset = []
+
+        if self.lower_limit != None:
+            set = set + [0] + self.dofs
+            position.append(0)
+            offset.append(self.lower_limit)
+
+        if self.upper_limit != None:
+            set = set + [0] + [ -x for x in self.dofs]
+            position.append(0)
+            offset.append(- self.upper_limit)
+                
+        map.set = concat(set)
+        map.offset = concat(offset)
+        dofs.position = concat(position)
+
+        return res
 
 
 class Cylindrical(Base):

@@ -1,8 +1,10 @@
+import Sofa
+from subprocess import Popen, PIPE
 
 import quat
 import numpy as np
 
-from . import concat
+from tool import concat
 
 class Frame:
     # a rigid frame, group operations are available.
@@ -36,7 +38,7 @@ class Frame:
         res = Frame( np.copy( self.data))
        
     def read(self, str):
-        self.data = map(float, str.split())
+        self.__dict__['data'] = map(float, str.split())
         return self
 
     def __mul__(self, other):

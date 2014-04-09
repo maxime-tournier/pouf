@@ -41,7 +41,7 @@ using namespace core::behavior;
 
 pouf_solver::pouf_solver()
 	: warm_start(initData(&warm_start,
-						  true,
+						  false,
 						  "warm_start",
 						  "warm start iterative solvers: avoids biasing solution towards zero (and speeds-up resolution)")),
 	  aggregate_lambdas(initData(&aggregate_lambdas,
