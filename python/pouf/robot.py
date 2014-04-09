@@ -104,6 +104,9 @@ class Humanoid:
                           self.rarm, self.rforearm,
                           self.head ]
 
+        # total mass
+        self.mass = sum( [ s.mass for s in self.segments ] )
+        
         # collision groups
         for i in self.arm_segments('l'):
             i.group = 1
@@ -243,55 +246,14 @@ class Humanoid:
 
         
         # TODO the rest should go elsewhere
-        
-        # com 
-        com = res.createChild('com')
-        com.createObject('MechanicalObject', 
-                         name = 'dofs',
-                         template = 'Vec3d',
-                         position = '0 0 0')
-
-        mass = []
-        input = []
-        
-        self.mass = 0
-
-        # TODO should be the dofs under the mass
-        for b in self.segments:
-            i = '@' + b.node.name
-            node = None
-
-            if node == None:
-                node = b.node
-            else:
-                i = i + '/mapped_mass'
-            
-            i = i + '/dofs'
-            m = node.getObject('mass').mass
-
-            mass.append( m )
-            input.append( i )
-            self.mass += m 
-
-        com.createObject('RigidComMultiMapping',
-                         template = 'Rigid,Vec3d',
-                         input = concat( input ),
-                         output = '@dofs',
-                         mass = concat( mass ))
-        
-
-        self.com = com
-
         self.node = res
         return res       
     
 
-    # angular momentum about center of mass
-    def angular_momentum(self):
+    # angular momentum about c (usually com)
+    def angular_momentum(self, c):
         res = vec( [0, 0, 0] )
         
-        c = self.com.getObject('dofs').position[0]
-
         for s in self.segments:
             dofs = s.node.getObject('dofs')
             omega = dofs.velocity[0][-3:]
@@ -310,6 +272,17 @@ class Humanoid:
             res += vec(mu) + (vec(p) - vec(c)).cross(s.mass * vec(v) )
             
         return res
+
+
+        # angular momentum about center of mass
+    def com(self):
+        res = vec( [0, 0, 0] )
+        
+        for s in self.segments:
+            pos = vec(s.node.getObject('dofs').position[0][:3])
+            res += s.mass * pos
+            
+        return res / self.mass
 
 
 
