@@ -21,6 +21,7 @@ def _make_pid(joint):
 
 
 class PID:
+    
     def __init__(self, robot):
         self.robot = robot
         self.pid = []
@@ -30,7 +31,7 @@ class PID:
             self.pid.extend( j.pid )
             
         for pid in self.pid:
-            pid.kp = -1
+            pid.kp = 1
             pid.kd = 0
 
     def reset(self):
@@ -46,13 +47,18 @@ class PID:
         for pid in self.pid:
             pid.post_step(dt)
 
+    # data is a dictionay { (name, index) : value } to set attribute
+    # 'what' of pid 'index' in joint 'name' to 'value'
     def set(self, what, data):
         for (name, index) in data:
             joint = getattr(self.robot, name)
             value = data[ (name, index) ]
 
             setattr(joint.pid[index], what, value)
-            
+
+    # 'who' is a set { (name, index) } (or dictionary but only keys
+    # are used). returns a dictionary { (name, index): value } giving
+    # attribute 'what' from pid 'index' in joint 'name'
     def get(self, what, who):
         res = {}
         for (name, index) in who:

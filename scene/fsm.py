@@ -30,23 +30,25 @@ class Script:
         return 0
     
 
-
+# state machine definition (see control.FSM)
 class StateGraph:
 
     def __init__(self, servo, root):
 
+        # these 3 are needed by FSM (states, transitions, start)
         self.states = ['start', 'high', 'low' ]
         self.transitions = [ ('wait', 'start', 'high'),
                              ('wait', 'high', 'low'),
                              ('wait', 'low', 'high') ]
         self.start = 'start'
-        
+
+        # additional init
         self.servo = servo
         self.root = root
 
         pouf.pose.setup( servo )
 
-    # transitions
+    # events
     def wait(self):
         return (self.root.getTime() - self.last) > 2
 
@@ -66,15 +68,17 @@ class StateGraph:
         self.last = self.root.getTime()
 
 
-    
+# an example scene demonstrating simple finite-state-machine posture
+# control. 3 states: start, high, low are visited after waiting 2
+# second in each state
 def createScene(node):
     scene = pouf.tool.scene( node )
 
+    # numerical solver
     num = node.createObject('SequentialSolver',
                             iterations = 30,
                             precision = 0)
 
-    ode = node.getObject('ode')
 
     # ground
     ground = pouf.tool.ground(scene)
@@ -93,7 +97,6 @@ def createScene(node):
     script = Script()
     pouf.script.insert( node, script )
 
-    script.robot = robot
     script.servo = servo
     script.fsm = fsm
     

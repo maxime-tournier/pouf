@@ -6,6 +6,7 @@ from pouf import rigid
 from pouf import joint
 from pouf import control
 from pouf import script
+from pouf import pose
 
 import math
 
@@ -19,91 +20,42 @@ class Script:
 
     def onEndAnimationStep(self, dt):
         self.servo.post_step(dt)
-        
         return 0
 
     def reset(self):
         self.servo.reset()
         return 0
     
-
-
-def stand_pose( flex ):
-    pose = { 'lknee': (0, 2 * flex),
-             'rknee': (0, 2 * flex),
-             
-             'lhip': (0, -2 * flex),
-             'rhip': (0, -2 * flex),
-             
-             'lankle': (0, -flex),
-             'rankle': (0, -flex),
-             
-             'lshoulder': (2, flex),
-             'rshoulder': (2, -flex),
-             
-             'lelbow': (0, -2 * flex),
-             'relbow': (0, -2 * flex),
-    }
-
-    return pose
-
-    
+# a very simple scene demonstrating scripting and pid control of a
+# humanoid robot posture.
 def createScene(node):
+
+    # default scene node
     scene = pouf.tool.scene( node )
 
+    # numerical solver
     num = node.createObject('SequentialSolver',
                             iterations = 30,
                             precision = 0)
+    # ground 
+    ground = pouf.tool.ground(node)
 
-    ode = node.getObject('ode')
-    
-    ground = rigid.Body('ground')
-
-    ground.visual = path + '/share/mesh/ground.obj'
-    ground.collision = ground.visual
-    ground.dofs.translation = [0, -1.1, 0]
-    
-    ground.insert( scene )
-    ground.node.createObject('FixedConstraint', 
-                             indices = '0' )
-    
+    # robot
     robot = pouf.robot.Humanoid('robot')
     robot.insert( scene )
 
+    # pid controllers
     servo = pouf.control.PID(robot)
 
+    # setup pid gains with reasonable defaults
+    pouf.pose.setup( servo )
+
+    # set desired pose
+    servo.set('pos', pouf.pose.stand( math.pi / 16 ) )
+    
+    # script
     script = Script()
-    pouf.script.insert( node, script )
-
-    script.robot = robot
     script.servo = servo
-
-    stiff = 1e4
-    normal = 1e3
-    soft = 1e2
-
-    for p in servo.pid:
-        p.kp = normal
-        p.kd = 1
-        p.ki = p.kp / 10
-
-
-    kp = {
-        'lphal': stiff,
-        'rphal': stiff,
-        
-        'lankle': stiff,
-        'rankle': stiff,
-        
-        'lshoulder': soft,
-        'rshoulder': soft,
-    
-        'lelbow': soft,
-        'relbow': soft,
-    }
-
-    
-    servo.set('kp', kp)
-    servo.set('pos', stand_pose( math.pi / 14.0 ) )
+    pouf.script.insert( node, script )
 
     return 0
