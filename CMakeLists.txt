@@ -33,17 +33,8 @@ set(SOURCE_FILES
 	)
 
 set(README_FILES
-	README
+	README.md
 	)
-
-UseQt()
-
-SOFA_QT4_WRAP_CPP(MOC_FILES ${HEADER_FILES})
-
-# make mocced header files path from absolute to relative
-ToRelativePath(MOC_FILES "${CMAKE_CURRENT_SOURCE_DIR}" "${MOC_FILES}")
-
-set(MOC_FILES_GROUP "Generated")
 
 add_library(${PROJECT_NAME} SHARED ${HEADER_FILES} ${MOC_FILES} ${SOURCE_FILES} ${README_FILES})
 
