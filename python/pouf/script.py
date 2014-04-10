@@ -30,7 +30,19 @@ class Proxy(Sofa.PythonScriptController):
     def reset(self):
         return getattr(self.impl, 'reset', _noop)()
 
-    # TODO more
+    def draw(self):
+        return getattr(self.impl, 'draw', _noop)()
+
+    def onKeyPressed(self, k):
+        return getattr(self.impl, 'onKeyPressed', _noop)(k)
+
+    def bwdInitGraph(self, node):
+        return getattr(self.impl, 'bwdInitGraph', _noop)(node)
+
+    def onLoaded(self, node):
+        return getattr(self.impl, 'onLoaded', _noop)(node)
+
+    # TODO more ?
         
 
 
