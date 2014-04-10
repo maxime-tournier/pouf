@@ -1,6 +1,8 @@
 include(${SOFA_CMAKE_DIR}/preProject.cmake)
 
-# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+if(APPLE)
+ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+endif()
 
 set(HEADER_FILES
 
