@@ -15,6 +15,7 @@ scripting of SOFA scenes.
 So far this plugin has only been tested on OSX 10.9 and Debian. It
 *might* work under windows.
 
+![fancy screenshot](https://raw.github.com/maxime-tournier/pouf/master/doc/screenshot.png)
 
 
 Requirements
