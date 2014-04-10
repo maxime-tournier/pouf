@@ -9,15 +9,15 @@ If you are looking for simple Finite-State-Machine/PID character
 control, you might want to give it a try.
 
 The plugin itself contains solvers, mappings and forcefields written
-in C++, but it also comes with python scripts to ease the creation and
+in c++, but it also comes with python scripts to ease the creation and
 scripting of SOFA scenes.
 
 
 Requirements
 ------------
 
-	- a working [SOFA] installation. The Python plug-in is highly recommended.
-	- a c++11 compiler
+- a working [SOFA] installation. The Python plug-in is highly recommended.
+- a c++11 compiler
 
 Installation
 ------------
