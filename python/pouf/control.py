@@ -47,17 +47,21 @@ class PID:
             pid.post_step(dt)
 
     def set(self, what, data):
-        for name in data:
+        for (name, index) in data:
             joint = getattr(self.robot, name)
+            value = data[ (name, index) ]
 
-            d = data[name]
+            setattr(joint.pid[index], what, value)
+            
+    def get(self, what, who):
+        res = {}
+        for (name, index) in who:
+            joint = getattr(self.robot, name)
+            value = getattr(joint.pid[index], what)
+            res[ (name, index) ] = value
 
-            if type(d) == tuple:
-                (index, value) = data[name]
-                setattr(joint.pid[index], what, value)
-            else:
-                for p in joint.pid:
-                    setattr(p, what, d)
+        return res
+
 
 
 
@@ -77,7 +81,7 @@ class FSM:
         if not (self.current in self.data.states):
             raise Exception('unknown state ' + s )
 
-        cb = getattr(self.data, 'on_' + self.current, None)
+        cb = getattr(self.data, 'enter_' + self.current, None)
         if cb != None: cb()
 
 
@@ -88,6 +92,8 @@ class FSM:
         # candidate transitions
         candidates = [ x for x in self.data.transitions if x[1] == self.current ]
 
+        old = self.current
+        
         for (name, src, dst) in candidates:
 
             # call cb to see if it matches
@@ -99,3 +105,7 @@ class FSM:
 
                 # new state
                 self.enter_state( dst ) 
+
+        if self.current == old:
+            cb = getattr(self.data, 'while_' + self.current, None)
+            if cb != None: cb()

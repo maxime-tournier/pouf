@@ -1,3 +1,6 @@
+import rigid
+
+from . import path
 
 def concat(x):
     return ' '.join(map(str, x))
@@ -42,3 +45,21 @@ def scene(root):
     
     
     return scene 
+
+
+# insert ground mesh into a node
+def ground(node, position = None):
+
+    res = rigid.Body('ground')
+    res.visual = path() + '/share/mesh/ground.obj'
+    res.collision = res.visual
+    res.dofs.translation = [0, -1.1, 0]
+
+    if position != None:
+        res.dofs.translation += position
+    
+    res.insert( node )
+    res.node.createObject('FixedConstraint', 
+                             indices = '0' )
+
+    return res

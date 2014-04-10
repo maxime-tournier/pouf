@@ -6,6 +6,7 @@ from pouf import rigid
 from pouf import joint
 from pouf import control
 from pouf import script
+from pouf import pose
 
 import math
 
@@ -30,27 +31,6 @@ class Script:
     
 
 
-def stand_pose( flex ):
-    pose = { 'lknee': (0, 2 * flex),
-             'rknee': (0, 2 * flex),
-             
-             'lhip': (0, -2 * flex),
-             'rhip': (0, -2 * flex),
-             
-             'lankle': (0, -flex),
-             'rankle': (0, -flex),
-             
-             'lshoulder': (2, flex),
-             'rshoulder': (2, -flex),
-             
-             'lelbow': (0, -2 * flex),
-             'relbow': (0, -2 * flex),
-    }
-
-    return pose
-
-
-
 class StateGraph:
 
     def __init__(self, servo, root):
@@ -64,50 +44,25 @@ class StateGraph:
         self.servo = servo
         self.root = root
 
-        # servo setup
-        stiff = 1e4
-        normal = 1e3
-        soft = 1e2
+        pouf.pose.setup( servo )
 
-        for p in servo.pid:
-             p.kp = normal
-             p.kd = 5
-             p.ki = 10
-
-
-        kp = {
-            'lphal': stiff,
-            'rphal': stiff,
-            
-            'lankle': stiff,
-            'rankle': stiff,
-            
-            'lshoulder': soft,
-            'rshoulder': soft,
-                 
-            'lelbow': soft,
-            'relbow': soft,
-        }
-
-        servo.set('kp', kp)
-
+    # transitions
     def wait(self):
         return (self.root.getTime() - self.last) > 2
 
-
-    def on_start(self):
-        self.servo.set('pos', stand_pose( math.pi / 14.0 ) )
+    # states
+    def enter_start(self):
+        self.servo.set('pos', pouf.pose.stand( math.pi / 14.0 ) )
         self.last = self.root.getTime()
 
-
-    def on_high(self):
-        self.servo.set('pos', { 'lshoulder': (2, math.pi / 2),
-                                'rshoulder': (2, -math.pi / 2) } )
+    def enter_high(self):
+        self.servo.set('pos', { ('lshoulder', 2): math.pi / 2,
+                                ('rshoulder', 2): -math.pi / 2 } )
         self.last = self.root.getTime()
 
-    def on_low(self):
-        self.servo.set('pos', { 'lshoulder': (2, math.pi / 14),
-                                'rshoulder': (2, -math.pi / 14) } )
+    def enter_low(self):
+        self.servo.set('pos', { ('lshoulder', 2): math.pi / 14,
+                                ('rshoulder', 2): -math.pi / 14 } )
         self.last = self.root.getTime()
 
 
@@ -122,15 +77,8 @@ def createScene(node):
     ode = node.getObject('ode')
 
     # ground
-    ground = rigid.Body('ground')
-    ground.visual = path + '/share/mesh/ground.obj'
-    ground.collision = ground.visual
-    ground.dofs.translation = [0, -1.1, 0]
+    ground = pouf.tool.ground(scene)
     
-    ground.insert( scene )
-    ground.node.createObject('FixedConstraint', 
-                             indices = '0' )
-
     # robot
     robot = pouf.robot.Humanoid('robot')
     robot.insert( scene )
@@ -138,6 +86,7 @@ def createScene(node):
     # servo
     servo = pouf.control.PID(robot)
 
+    # state machine
     fsm = pouf.control.FSM( StateGraph(servo, node) )
     
     # script
