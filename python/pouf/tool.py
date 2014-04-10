@@ -41,7 +41,8 @@ def scene(root):
     ode = node.createObject('pouf.solver',
                             name = 'ode',
                             warm_start = False,
-                            stabilization = False)
+                            stabilization = False,
+                            aggregate_lambdas = True)
     
     
     return scene 

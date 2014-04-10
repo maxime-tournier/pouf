@@ -177,7 +177,7 @@ class Body:
                                 inertia_forces = self.inertia_forces )
                 
         # user node i.e. the one the user provided
-        user = res.createChild( self.name + '-user' )
+        user = res.createChild( 'user' )
 
         user.createObject('MechanicalObject',
                           template = 'Rigid',

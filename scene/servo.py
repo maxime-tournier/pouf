@@ -38,7 +38,7 @@ def createScene(node):
                             iterations = 30,
                             precision = 0)
     # ground 
-    ground = pouf.tool.ground(node)
+    ground = pouf.tool.ground( scene )
 
     # robot
     robot = pouf.robot.Humanoid('robot')
