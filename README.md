@@ -12,7 +12,7 @@ The plugin itself contains solvers, mappings and forcefields written
 in c++, but it also comes with python scripts to ease the creation and
 scripting of SOFA scenes.
 
-So far this plugin has only be tested on OSX 10.9 and Debian. It
+So far this plugin has only been tested on OSX 10.9 and Debian. It
 *might* work under windows.
 
 Requirements
