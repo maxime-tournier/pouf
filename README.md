@@ -21,8 +21,7 @@ So far this plugin has only been tested on OSX 10.9 and Debian. It
 Requirements
 ------------
 
-- a working [SOFA] installation. Enabling the Python plug-in is highly
-  recommended.
+- a working [SOFA] installation with the python plugin active.
 
 Building
 --------
