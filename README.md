@@ -15,6 +15,8 @@ scripting of SOFA scenes.
 So far this plugin has only been tested on OSX 10.9 and Debian. It
 *might* work under windows.
 
+
+
 Requirements
 ------------
 
@@ -36,8 +38,13 @@ Save, then rebuild. That should be it.
 Usage
 -----
 
-Have a look in the `scene` directory, which contains various example
-scenes built with this plugin.
+Have a look in the `scene` directory: it contains various example
+scenes for the following features:
+
+- `robot.py`: basic articulated rigid body
+- `servo.py`: robot with PID controllers
+- `fsm.py`: Finite State Machine + PID control
+- `contact.py`: drawing + contact infos (points/forces, support polygon, center of pressure)
 
 
 [sofa]: http://www.sofa-framework.org/
