@@ -16,6 +16,8 @@ set(HEADER_FILES
 	tool/graph_vector.h
 
 	collision/triangle_model.h
+
+	linearsolver/pgs.h
 	
 	)
 
@@ -30,6 +32,8 @@ set(SOURCE_FILES
 	tool/graph_vector.cpp
 
 	collision/triangle_model.cpp
+
+	linearsolver/pgs.cpp
 	)
 
 set(README_FILES

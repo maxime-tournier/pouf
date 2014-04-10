@@ -89,7 +89,8 @@ def createScene(node):
     scene = pouf.tool.scene( node )
 
     # numerical solver
-    num = node.createObject('SequentialSolver',
+    num = node.createObject('pouf.pgs',
+                            name = 'num',
                             iterations = 30,
                             precision = 0)
     # ground 
