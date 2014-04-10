@@ -24,17 +24,17 @@ Requirements
 - a working [SOFA] installation. Enabling the Python plug-in is highly
   recommended.
 
-Installation
-------------
+Building
+--------
 
-Just copy the directory inside either `sofa/applications/plugins` or
-`sofa/applications-dev/plugins` then re-run `cmake`.
+Just copy/link the directory inside either `sofa/applications/plugins`
+or `sofa/applications-dev/plugins` then re-run `cmake`.
 
 Edit `CMakeCache.txt` to set:
 
 	 SOFA-DEVPLUGIN_POUF:BOOL=ON
 
-Save, then rebuild. That should be it.
+Save, then run `make`.
 
 Usage
 -----
@@ -47,5 +47,7 @@ scenes for the following features:
 - `fsm.py`: Finite State Machine + PID control
 - `contact.py`: drawing + contact infos (points/forces, support polygon, center of pressure)
 
+You can open these scenes directly from SOFA, provided you enabled the
+Python plugin in the plugin manager.
 
 [sofa]: http://www.sofa-framework.org/
