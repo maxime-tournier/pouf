@@ -18,6 +18,8 @@ def _make_rigid(name, mesh, position = None, density = 1000 ):
     res.collision = mesh
     res.mass_from_mesh( res.visual, density )
 
+    res.inertia_forces = True
+
     if position != None:
         res.dofs.translation = position
         
