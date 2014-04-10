@@ -6,7 +6,7 @@ at developping contact solvers and physically based character
 animation tools.
 
 If you are looking for simple Finite-State-Machine/PID character
-control, you might want to give it a try.
+control with frictional contacts, you might want to give it a try.
 
 The plugin itself contains solvers, mappings and forcefields written
 in c++, but it also comes with python scripts to ease the creation and
