@@ -3,20 +3,18 @@ POUF !
 
 *pouf* is a small plugin for the [SOFA][sofa] framework. It is aimed
 at developping contact solvers and physically based character
-animation tools.
-
-If you are looking for simple Finite-State-Machine/PID character
-control with frictional contacts, you might want to give it a try.
+animation tools. If you are looking for simple
+Finite-State-Machine/PID character control with frictional contacts,
+you might want to give it a try.
 
 The plugin itself contains solvers, mappings and forcefields written
 in c++, but it also comes with python scripts to ease the creation and
 scripting of SOFA scenes.
 
-So far this plugin has only been tested on OSX 10.9 and Debian. It
-*might* work under windows.
-
 ![fancy screenshot](https://raw.github.com/maxime-tournier/pouf/master/doc/screenshot.png)
 
+So far *pouf* has only been tested on OSX 10.9 and Debian. It
+*might* work under windows.
 
 Requirements
 ------------
