@@ -11,7 +11,6 @@ import math
 
 path = pouf.path()
 
-
 class Script:
     
     def onBeginAnimationStep(self, dt):
@@ -89,16 +88,18 @@ def createScene(node):
         p.ki = p.kp / 10
 
 
-    kp = { 'lphal': stiff,
-           'rphal': stiff,
-           'lankle': stiff,
-           'rankle': stiff,
-
-           'lshoulder': soft,
-           'rshoulder': soft,
-
-           'lelbow': soft,
-           'relbow': soft,
+    kp = {
+        'lphal': stiff,
+        'rphal': stiff,
+        
+        'lankle': stiff,
+        'rankle': stiff,
+        
+        'lshoulder': soft,
+        'rshoulder': soft,
+    
+        'lelbow': soft,
+        'relbow': soft,
     }
 
     
