@@ -44,6 +44,7 @@ scenes for the following features:
 - `fsm.py`: Finite State Machine + PID control
 - `contact.py`: drawing contact infos (points/forces, support polygon, center of pressure)
 - `constraint.py`: kinematic constraints from python
+- `am.py`: angular momentum damping 
 
 You can open these scenes directly from SOFA.
 
