@@ -93,6 +93,8 @@ def createScene(node):
         constraint.matrix[i, 3 + i] = 1
         constraint.value[i] = 0
 
+    # note: you should update constraints whenever matrix/value
+    # change
     constraint.update()
 
 
