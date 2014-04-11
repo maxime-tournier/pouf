@@ -19,7 +19,7 @@ So far *pouf* has only been tested on OSX 10.9 and Debian. It
 Requirements
 ------------
 
-- a working [SOFA] installation with the python plugin active.
+- a working [SOFA] installation with the python plugin activated.
 
 Building
 --------
