@@ -1,6 +1,7 @@
 
 import rigid
 import joint
+import quat
 
 from . import path
 
@@ -250,7 +251,7 @@ class Humanoid:
     
 
     # angular momentum about c (usually com)
-    def angular_momentum(self, c):
+    def am(self, c):
         res = vec( [0, 0, 0] )
         
         for s in self.segments:
@@ -268,7 +269,7 @@ class Humanoid:
             
             mu = quat.rotate(q, tmp)
         
-            res += vec(mu) + (vec(p) - vec(c)).cross(s.mass * vec(v) )
+            res += vec(mu) + np.cross(vec(p) - vec(c), s.mass * vec(v) )
             
         return res
 

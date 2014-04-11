@@ -1,5 +1,13 @@
 import pid
 
+import tool
+from tool import concat
+
+import numpy as np
+
+
+# TODO get rid of this one
+from Compliant import Tools
 
 # build pid joints
 def _make_pid(joint):
@@ -127,38 +135,52 @@ class FSM:
 
 
 
+# perform broyden update on J so that J u = v
+def broyden(J, u, v):
+    norm2 = np.inner(u, u)
+
+    if norm2 >= 1e-10:
+        Ju = J.dot(u)
+        lhs = (v - Ju) / norm2
+        J += np.outer(lhs, u)
+            
+
+
 # a kinematic constraint. 'matrix' is the constraint jacobian, and
 # 'value' should be understood as 'desired position - current
 # position'. for a velocity constraint, simply set: value = dt * v
 class Constraint:
 
     # note: dofs must all have the same dofs
-    def __init__(self, name, parent, dofs, dim):
+    def __init__(self, name, parent, dofs, rows):
 
-        self.dim = dim
         self.node = parent.createChild(name)
 
         self.compliance = 0
         self.damping = 0
+
+        # TODO rename ?
+        self._constrained_dofs = dofs
         
         input = []
-        dofs_dim = 0
+
+        self.rows = rows
+        self.cols = 0
 
         for n in dofs:
             input.append( '@{0}/{1}'.format( Tools.node_path_rel(self.node, n.getContext() ),
                                              n.name ) )
-            dofs_dim += pouf.tool.matrix_size( n )
+            self.cols += tool.matrix_size( n )
 
-        self.matrix = np.zeros( (dim, dofs_dim) )
-        self.value = np.zeros( dim )
-
+        self.matrix = np.zeros( (self.rows, self.cols) )
+        self.value = np.zeros( self.rows )
 
         self.dofs = self.node.createObject('MechanicalObject',
                                            name = 'dofs',
                                            template = 'Vec1d',
-                                           position = tool.concat( [0] * dim ) )
+                                           position = concat( [0] * self.rows ) )
 
-        template = pouf.tool.template( dofs[0] )
+        template = tool.template( dofs[0] )
 
         self.map = self.node.createObject('AffineMultiMapping',
                                           name = 'map',
@@ -174,7 +196,7 @@ class Constraint:
                                          template = 'Vec1d',
                                          compliance = self.compliance,
                                          damping = self.damping )
-
+        
     def update(self):
         self.map.matrix = concat( self.matrix.reshape(self.matrix.size).tolist() )
         self.map.value = concat( -self.value )
@@ -184,3 +206,15 @@ class Constraint:
         self.ff.damping = self.damping
         self.ff.init()
 
+    def constrained_velocity(self):
+        res = np.zeros( self.cols )
+
+        off = 0
+        # TODO optimize !
+        for d in self._constrained_dofs:
+            dim = tool.matrix_size( d )
+            s = d.findData('velocity').getValueString()
+            res[off:off + dim] = map(float, s.split(' '))
+            off += dim
+
+        return res
