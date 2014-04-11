@@ -99,3 +99,54 @@ def draw(active, polygon, com, scale = 1.5e-3 ):
     glLineWidth(1.0)
     glPointSize(1.0)
 
+
+
+
+
+# computes centroid of convex hull
+def centroid( points ):
+
+    # actually this is useless, we could use any vertex instead
+    mean = np.mean(points, axis = 0)
+
+    rows = len(points)
+    mass = np.zeros( rows )
+    
+    m = 0                       # mean mass
+    c = 0                       # total mass
+
+    # split convex hull into triangles around mean
+    for i in xrange(rows):
+        n = i + 1 if i < rows - 1 else 0
+        p2 = points[n] 
+        p1 = points[i] 
+    
+        b =  (p2 - p1)
+
+        norm2 = b.dot(b)
+
+        # otherwise triangle is zero area, skip it
+        if norm2 > 1e-10:
+            h = p1 + b * b.dot(mean) / norm2 - mean
+
+            area = np.sqrt(norm2 * h.dot(h)) / 2
+            
+            # spread mass across vertices
+            mass[i] += area / 3
+            mass[n] += area / 3
+            
+            m += area / 3
+            c += area
+
+    # compute weighted average
+    p = m * mean
+    
+    for i in xrange(rows):
+        p += mass[i] * points[i]
+
+    # TODO line stuff instead
+    if c == 0: return mean
+
+    p /= c
+
+    return p

@@ -3,8 +3,7 @@ from . import path
 
 import re
 
-
-
+import numpy as np
 
 def concat(x):
     return ' '.join(map(str, x))
@@ -78,4 +77,11 @@ def template(dofs):
     data = dofs.findData('velocity').getValueTypeString()
     res = re.match(r'.*<(.*)>.*', data).group(1)
     return res
+
+
+
+def hat(x):
+    return np.array( [[0, -x[2], x[1]],
+                      [x[2], 0, -x[0]],
+                      [-x[1], x[0], 0]])
 

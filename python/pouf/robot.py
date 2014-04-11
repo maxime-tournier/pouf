@@ -284,6 +284,17 @@ class Humanoid:
             
         return res / self.mass
 
+    # com derivative
+    def dcom(self):
+        res = vec( [0, 0, 0] )
+        
+        for s in self.segments:
+            pos = vec(s.node.getObject('dofs').velocity[0][:3])
+            res += s.mass * pos
+            
+        return res / self.mass
+
+
 
     # TODO sort these two out ?
     # cop 
