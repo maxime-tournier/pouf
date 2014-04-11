@@ -2,6 +2,7 @@ import rigid
 
 from . import path
 
+
 def concat(x):
     return ' '.join(map(str, x))
 
@@ -58,9 +59,13 @@ def ground(node, position = None):
 
     if position != None:
         res.dofs.translation += position
-    
+        
     res.insert( node )
     res.node.createObject('FixedConstraint', 
-                             indices = '0' )
+                          indices = '0' )
 
     return res
+
+
+
+

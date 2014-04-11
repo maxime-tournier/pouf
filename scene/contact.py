@@ -33,7 +33,7 @@ class Script:
         # obtain contact infos
         self.active = pouf.contact.active( self.ground.node )
         self.polygon = pouf.contact.polygon( self.active )
-        self.wrench = pouf.contact.wrench( self.ground.node )
+        self.com = self.servo.robot.com()
         
         return 0
 
@@ -48,36 +48,9 @@ class Script:
     def draw(self):
 
         if self.polygon != None and len( self.polygon ) > 0:
-            glLineWidth(2.0)
-            glDisable(GL_LIGHTING)
-
-            # (closed) polygon
-            glColor([0, 1, 0] )
-            hull = [ self.active[i][0] for i in self.polygon ]
-            pouf.gl.line_strip( hull + [hull[0]] )
-
-            # contact forces
-            scale =  1 / (9.81 * self.servo.robot.mass)
-            glColor([1, 1, 0])
-            for i in range(len(self.active)):
-                (p, f) = self.active[i]
-                pouf.gl.line( p, p + scale * f )
-                    
-            # cop + grf
-            origin = self.active[0][0]
-            delta = self.ground.node.getObject('dofs').position[0][:3] - origin
-
-            # bring self.wrench at origin
-            wrench = -self.wrench
-            wrench[3:] += np.cross(delta, wrench[:3])
-            
-            cop = origin + pouf.contact.cop( wrench )
-
-            glColor([1, 0, 0])
-            pouf.gl.line( cop, cop + scale * wrench[:3] )
-
-            glEnable(GL_LIGHTING)
-            glLineWidth(1.0)
+            pouf.contact.draw(self.active,
+                              self.polygon,
+                              self.com)
             
         return 0
     
