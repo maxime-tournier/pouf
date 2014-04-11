@@ -58,60 +58,6 @@ class Script:
 
 
 
-class Constraint:
-
-    # note: dofs must all have the same dofs
-    def __init__(self, name, parent, dofs, dim):
-
-        self.dim = dim
-        self.node = parent.createChild(name)
-
-        self.compliance = 0
-        self.damping = 0
-        
-        input = []
-        dofs_dim = 0
-
-        for n in dofs:
-            input.append( '@{0}/{1}'.format( Tools.node_path_rel(self.node, n.getContext() ),
-                                             n.name ) )
-            dofs_dim += pouf.tool.matrix_size( n )
-
-        self.matrix = np.zeros( (dim, dofs_dim) )
-        self.value = np.zeros( dim )
-
-
-        
-        self.dofs = self.node.createObject('MechanicalObject',
-                                           name = 'dofs',
-                                           template = 'Vec1d',
-                                           position = tool.concat( [0] * dim ) )
-
-        template = pouf.tool.template( dofs[0] )
-
-        self.map = self.node.createObject('AffineMultiMapping',
-                                          name = 'map',
-                                          hard_positions = True,
-                                          template = '{0}, Vec1d'.format( template ),
-                                          input = concat( input ),
-                                          output = '@dofs',
-                                          matrix = concat( self.matrix.reshape( self.matrix.size ).tolist() ),
-                                          value = concat( -self.value ) )
-
-        self.ff = self.node.createObject('UniformCompliance',
-                                         name = 'ff',
-                                         template = 'Vec1d',
-                                         compliance = self.compliance,
-                                         damping = self.damping )
-
-    def update(self):
-        self.map.matrix = concat( self.matrix.reshape(self.matrix.size).tolist() )
-        self.map.value = concat( -self.value )
-        self.map.init()
-
-        self.ff.compliance = self.compliance
-        self.ff.damping = self.damping
-        self.ff.init()
         
 
 def createScene(node):
@@ -138,9 +84,9 @@ def createScene(node):
     pouf.pose.setup( servo )
     servo.set('pos', pouf.pose.stand() )
     
-    # constraint on joint angles
+    # constraint on joint angles: zero velocities
     dofs = [ robot.lshoulder.node.getObject('dofs') ]
-    constraint = Constraint('constraint', node, dofs, 3)
+    constraint = pouf.control.Constraint('constraint', node, dofs, 3)
     
     # block dofs for all pids in joint lshoulder
     for i in range(constraint.dim):
@@ -148,7 +94,8 @@ def createScene(node):
         constraint.value[i] = 0
 
     constraint.update()
-    
+
+
     # script
     script = Script()
     pouf.script.insert( node, script )

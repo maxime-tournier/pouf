@@ -42,7 +42,8 @@ scenes for the following features:
 - `robot.py`: basic articulated rigid body
 - `servo.py`: robot with PID controllers
 - `fsm.py`: Finite State Machine + PID control
-- `contact.py`: drawing + contact infos (points/forces, support polygon, center of pressure)
+- `contact.py`: drawing contact infos (points/forces, support polygon, center of pressure)
+- `constraint.py`: kinematic constraints from python
 
 You can open these scenes directly from SOFA.
 

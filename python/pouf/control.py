@@ -124,3 +124,63 @@ class FSM:
         if self.current == old:
             cb = getattr(self.data, 'while_' + self.current, None)
             if cb != None: cb()
+
+
+
+# a kinematic constraint. 'matrix' is the constraint jacobian, and
+# 'value' should be understood as 'desired position - current
+# position'. for a velocity constraint, simply set: value = dt * v
+class Constraint:
+
+    # note: dofs must all have the same dofs
+    def __init__(self, name, parent, dofs, dim):
+
+        self.dim = dim
+        self.node = parent.createChild(name)
+
+        self.compliance = 0
+        self.damping = 0
+        
+        input = []
+        dofs_dim = 0
+
+        for n in dofs:
+            input.append( '@{0}/{1}'.format( Tools.node_path_rel(self.node, n.getContext() ),
+                                             n.name ) )
+            dofs_dim += pouf.tool.matrix_size( n )
+
+        self.matrix = np.zeros( (dim, dofs_dim) )
+        self.value = np.zeros( dim )
+
+
+        self.dofs = self.node.createObject('MechanicalObject',
+                                           name = 'dofs',
+                                           template = 'Vec1d',
+                                           position = tool.concat( [0] * dim ) )
+
+        template = pouf.tool.template( dofs[0] )
+
+        self.map = self.node.createObject('AffineMultiMapping',
+                                          name = 'map',
+                                          hard_positions = True,
+                                          template = '{0}, Vec1d'.format( template ),
+                                          input = concat( input ),
+                                          output = '@dofs',
+                                          matrix = concat( self.matrix.reshape( self.matrix.size ).tolist() ),
+                                          value = concat( -self.value ) )
+
+        self.ff = self.node.createObject('UniformCompliance',
+                                         name = 'ff',
+                                         template = 'Vec1d',
+                                         compliance = self.compliance,
+                                         damping = self.damping )
+
+    def update(self):
+        self.map.matrix = concat( self.matrix.reshape(self.matrix.size).tolist() )
+        self.map.value = concat( -self.value )
+        self.map.init()
+
+        self.ff.compliance = self.compliance
+        self.ff.damping = self.damping
+        self.ff.init()
+
