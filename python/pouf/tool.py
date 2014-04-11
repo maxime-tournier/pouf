@@ -1,6 +1,8 @@
 import rigid
 from . import path
+
 import re
+
 
 
 
@@ -76,3 +78,4 @@ def template(dofs):
     data = dofs.findData('velocity').getValueTypeString()
     res = re.match(r'.*<(.*)>.*', data).group(1)
     return res
+
