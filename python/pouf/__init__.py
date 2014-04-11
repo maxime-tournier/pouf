@@ -1,9 +1,8 @@
 import os
 
-
 def path():
-    pwd = os.path.dirname( os.path.abspath(__file__) )
-    res = '/'.join( pwd.split('/')[:-2] )
-    return res
+    current_dir = os.path.dirname(__file__)
+    return os.path.abspath( os.path.join( current_dir, '..', '..' ))
+
 
 
