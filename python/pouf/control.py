@@ -25,14 +25,23 @@ class PID:
     def __init__(self, robot):
         self.robot = robot
         self.pid = []
+        self.index = {}
 
+        off = 0
         for j in robot.joints:
             j.pid = _make_pid(j)
             self.pid.extend( j.pid )
-            
+
+            for i in range(len(j.pid)):
+                self.index[ (j.name, i) ] = off
+                off += 1
+
+        # init values
         for pid in self.pid:
             pid.kp = 1
             pid.kd = 0
+
+            
 
     def reset(self):
         for pid in self.pid:

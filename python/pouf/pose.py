@@ -1,3 +1,5 @@
+import math
+
 
 # setup controller with reasonable defaults
 def setup(servo):
@@ -56,7 +58,7 @@ def setup(servo):
     
     
 # posture collection
-def stand( flex ):
+def stand( flex = math.pi / 14 ):
     pose = { ('lknee', 0): 2 * flex,
              ('rknee', 0): 2 * flex,
             

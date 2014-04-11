@@ -1,6 +1,7 @@
 import rigid
-
 from . import path
+import re
+
 
 
 def concat(x):
@@ -67,5 +68,11 @@ def ground(node, position = None):
     return res
 
 
+def matrix_size(dofs):
+    if type(dofs.velocity) == float: return 1
+    return len(dofs.velocity) * len( dofs.velocity[0] )
 
-
+def template(dofs):
+    data = dofs.findData('velocity').getValueTypeString()
+    res = re.match(r'.*<(.*)>.*', data).group(1)
+    return res
