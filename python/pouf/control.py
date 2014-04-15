@@ -10,7 +10,7 @@ import numpy as np
 from Compliant import Tools
 
 # build pid joints
-def _make_pid(joint):
+def _make_pid(joint, class_name = pid.Implicit):
     res = []
      
     for i, d in enumerate(joint.dofs):
@@ -18,8 +18,8 @@ def _make_pid(joint):
         if d == 1:
             name = 'pid-' + joint.node.name + '-' + str(i) 
 
-            p = pid.Implicit( joint.node.getObject('dofs'),
-                              name = name )
+            p = class_name( joint.node.getObject('dofs'),
+                            name = name )
 
             p.basis = [0] * 6
             p.basis[i] = 1
@@ -30,14 +30,14 @@ def _make_pid(joint):
 
 class PID:
     
-    def __init__(self, robot):
+    def __init__(self, robot, class_name = pid.Implicit):
         self.robot = robot
         self.pid = []
         self.index = {}
 
         off = 0
         for j in robot.joints:
-            j.pid = _make_pid(j)
+            j.pid = _make_pid(j, class_name)
             self.pid.extend( j.pid )
 
             for i in range(len(j.pid)):

@@ -40,12 +40,14 @@ class Script:
 
         if len(self.active) > 0:
             u = self.constraint.constrained_velocity()
-            m = self.servo.robot.mass
+            robot = self.servo.robot
+
+            m = robot.mass
 
             pouf.control.broyden(self.H, u, self.am);
             pouf.control.broyden(self.L, u, m * self.dcom);
-            
             # desired cop
+
             cop = pouf.contact.centroid( [ self.active[i][0] for i in self.polygon ] )
 
             s = self.com - cop
@@ -53,14 +55,8 @@ class Script:
 
             g = np.array([0, -9.81, 0])
 
-            f = np.array([cop[0] - self.com[0],
-                          0,
-                          cop[2] - self.com[2]]) / self.constraint.compliance
-
-            f -= self.constraint.damping * self.dcom
-            
             self.constraint.matrix = self.H + pouf.tool.hat(s).dot(self.L)
-            self.constraint.value = current + dt * np.cross(s, m * g)
+            self.constraint.value = current + dt * np.cross(s, m * g )
         
             self.constraint.update()
         
@@ -124,10 +120,10 @@ def createScene(node):
     # cop control
     dofs = [ j.node.getObject('dofs') for j in robot.joints ]
     constraint = pouf.control.Constraint('constraint', node, dofs, 3)
-    constraint.compliance = 1e-2
+    constraint.compliance = 0.8
 
     # critical damping
-    constraint.damping = math.sqrt(robot.mass / constraint.compliance )
+    constraint.damping = 1e-1 * math.sqrt(robot.mass / constraint.compliance )
     
     # script
     script = Script()

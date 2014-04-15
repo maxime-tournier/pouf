@@ -139,11 +139,12 @@ class Implicit:
 
         self.set_force( self.ki * self.integral )
 
-    # get force
+    # get/set/add explicit force 
     def get_force(self):
-        return float(self.dofs.externalForce)
-
+        return self._force
+    
     def set_force(self, value):
+        self._force = value
         self.dofs.externalForce = str(value)
 
     def add_force(self, value):
@@ -151,12 +152,12 @@ class Implicit:
         
     # force applied at the end of time step
     def post_force(self):
-        return self.dofs.force + self.kd * float(self.dofs.velocity) + self.get_force()
+        return float(self.dofs.force) + self.kd * float(self.dofs.velocity) + self.get_force()
 
     # call this during onEndAnimationStep
     def post_step(self, dt):
         # update integral with error on time step end
-        self.integral = self.integral - dt * float(self.dofs.position)
+        self.integral -= dt * float(self.dofs.position)
         
 
 

@@ -235,3 +235,16 @@ class Body:
         self.node = res
         self.user = user
         return res
+
+
+
+
+# some helpers
+
+def translation(node):
+    return np.array(node.getObject('dofs').position[0][:3])
+
+def rotation(node):
+    return np.array(node.getObject('dofs').position[0][3:])
+
+
