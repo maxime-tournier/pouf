@@ -220,12 +220,12 @@ class Body:
                                    name = 'dofs',
                                    position = '@loader.position')
                         
-            model = collision.createObject('pouf.TriangleModel', 
+            model = collision.createObject('TriangleModel', 
                                            name = 'model',
                                            template = 'Vec3d',
                                            contactFriction = self.mu)
             if self.group != None:
-                model.collisionGroupTags = str(self.group)
+                model.group = str(self.group)
                 
             collision.createObject('RigidMapping',
                                    template = 'Rigid,Vec3d',

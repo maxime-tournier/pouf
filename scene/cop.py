@@ -52,9 +52,15 @@ class Script:
             current = self.am + np.cross(s, m * self.dcom)
 
             g = np.array([0, -9.81, 0])
+
+            f = np.array([cop[0] - self.com[0],
+                          0,
+                          cop[2] - self.com[2]]) / self.constraint.compliance
+
+            f -= self.constraint.damping * self.dcom
             
             self.constraint.matrix = self.H + pouf.tool.hat(s).dot(self.L)
-            self.constraint.value = current + dt * m * np.cross(s, g)
+            self.constraint.value = current + dt * np.cross(s, m * g)
         
             self.constraint.update()
         
@@ -69,7 +75,7 @@ class Script:
         self.servo.reset()
         self.polygon = None
 
-        self.constraint.matrix.fill(0)
+        # self.constraint.matrix.fill(0)
         self.constraint.value.fill(0)
 
         self.H = np.copy(self.constraint.matrix)
@@ -118,8 +124,10 @@ def createScene(node):
     # cop control
     dofs = [ j.node.getObject('dofs') for j in robot.joints ]
     constraint = pouf.control.Constraint('constraint', node, dofs, 3)
-    constraint.compliance = 1
-    constraint.damping = 0.5
+    constraint.compliance = 1e-2
+
+    # critical damping
+    constraint.damping = math.sqrt(robot.mass / constraint.compliance )
     
     # script
     script = Script()

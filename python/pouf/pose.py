@@ -5,7 +5,7 @@ import math
 def setup(servo):
     
     # servo setup
-    stiff = 1e4
+    stiff = 2e3
     normal = 1e3
     soft = 1e2
 
@@ -14,18 +14,19 @@ def setup(servo):
         p.kd = 5
         p.ki = 10
 
-        
+
+    ankle = stiff
     kp = {
         ('lphal', 0): stiff,
         ('rphal', 0): stiff,
         
-        ('lankle', 0): stiff,
-        ('lankle', 1): stiff,
-        ('lankle', 2): stiff,
+        ('lankle', 0): ankle,
+        ('lankle', 1): ankle,
+        ('lankle', 2): ankle,
 
-        ('rankle', 0): stiff,
-        ('rankle', 1): stiff,
-        ('rankle', 2): stiff,
+        ('rankle', 0): ankle,
+        ('rankle', 1): ankle,
+        ('rankle', 2): ankle,
         
         ('lshoulder', 0): soft,
         ('lshoulder', 1): soft,

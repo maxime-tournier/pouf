@@ -8,6 +8,7 @@
 #include <assembly/AssemblyHelper.h>
 #include <utils/scoped.h>
 
+#include "sparse.h"
 
 namespace tool {
 

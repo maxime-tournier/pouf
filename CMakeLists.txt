@@ -15,8 +15,6 @@ set(HEADER_FILES
 	tool/find_insert.h
 	tool/graph_vector.h
 
-	collision/triangle_model.h
-
 	linearsolver/pgs.h
 	
 	)
@@ -30,8 +28,6 @@ set(SOURCE_FILES
 	tool/mapping_graph.cpp
 	tool/assemble.cpp
 	tool/graph_vector.cpp
-
-	collision/triangle_model.cpp
 
 	linearsolver/pgs.cpp
 	)
