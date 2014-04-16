@@ -1,5 +1,8 @@
 #include "assemble.h"
 
+#include "mapping_graph.h"
+#include "graph_vector.h"
+
 #include <Eigen/Sparse>
 
 #include <sofa/simulation/common/Node.h>
@@ -20,12 +23,6 @@ typedef Eigen::SparseMatrix<real, Eigen::ColMajor> cmat;
 
 struct result_type {
 
-	// TODO could be merged with graph_vector
-	struct chunk_type {
-		std::vector<unsigned> vertex, offset;
-		unsigned dim;
-	} master, compliant;
-
 	std::vector<rmat> J, H;	// all dofs
 	std::vector<rmat> P;	// master dofs
 	std::vector<rmat> C;	// compliant dofs
@@ -38,87 +35,17 @@ struct result_type {
 		C.reserve(n);
 		P.reserve(n);
 
-		master.vertex.reserve(n);
-		master.offset.reserve(n);
-
-		compliant.vertex.reserve(n);
-		compliant.offset.reserve(n);
 	}
 
-};
-
-
-struct offset_visitor {
-	result_type& result;
-
-	offset_visitor(result_type& result)
-		: result(result) {
-		
-		result.master.dim = 0;
-		result.compliant.dim = 0;
-	}
-
-
-
-	void push_offsets(result_type::chunk_type& out,
-					  unsigned vertex,
-					  const mapping_graph& graph)  const {
-
-		if( out.offset.empty() ) {
-			// first dofs 
-			out.offset.push_back( 0 );
-		} else {
-			// previous dofs
-			unsigned prev_dim = graph[ out.vertex.back() ]->getMatrixSize();
-			out.offset.push_back(out.offset.back() + prev_dim);
-		}
-
-		out.vertex.push_back( vertex );
-		out.dim += graph[vertex]->getMatrixSize();
-		
-	}
-	
-	// push master/compliant offsets for current vertex
-	void push_offsets(unsigned vertex,
-					  sofa::simulation::Node* node,
-					  const mapping_graph& graph) const {
-
-		mapping_graph::out_edge_range out_edges = boost::out_edges(vertex, graph);
-
-		// independent dofs ?
-		if( out_edges.first == out_edges.second ) {
-			push_offsets(result.master, vertex, graph);
-		} else {
-			// mapped dofs
-			
-			for(unsigned j = 0, m = node->forceField.size(); j < m; ++j ) {
-				sofa::core::behavior::BaseForceField* ffield = node->forceField[j];
-				// compliant dofs ?
-				if(ffield->isCompliance.getValue() ) {
-					push_offsets(result.compliant, vertex, graph);
-				}
-			}
-		}
-	}
-
-
-
-	void operator()(unsigned vertex, const mapping_graph& graph) const {
-		using namespace sofa;
-		
-		core::behavior::BaseMechanicalState* dofs = graph[vertex];
-		simulation::Node* node = static_cast<simulation::Node*>(dofs->getContext());
-		
-		push_offsets(vertex, node, graph);
-	}
-	
 };
 
 
 // gather H/C and concatenate J
 struct assembly_visitor {
 	
-	result_type& result;
+  result_type& result;
+  const graph_vector& state;
+
 
 	// mutable because of sofa not having heard of const-correctness
 	mutable sofa::core::MechanicalParams mparams_compliance, mparams_stiffness;
@@ -126,8 +53,10 @@ struct assembly_visitor {
 	mutable unsigned off_master;
 	
 	assembly_visitor(result_type& result,
+					 const graph_vector& state,
 					 const sofa::core::MechanicalParams mparams) 
 		: result(result),
+		  state(state),
 		  mparams_compliance( mparams ),
 		  mparams_stiffness( mparams ) {
 		
@@ -157,6 +86,8 @@ struct assembly_visitor {
 			throw std::runtime_error("more than one compliance under a node");
 		}
 	}
+
+
 	
 	void push_P(unsigned vertex,
 				sofa::simulation::Node* node, 
@@ -211,7 +142,7 @@ struct assembly_visitor {
 	
 
 	// push concatenated mapping and geometric stiffness onto
-	// result. offsets/H must be up-to-date !
+	// result. H must be up-to-date !
 	void push_J(unsigned vertex,
 				sofa::simulation::Node* node,
 				const mapping_graph& graph) const {
@@ -220,14 +151,14 @@ struct assembly_visitor {
 		using namespace sofa;
 		
 		// mapping block
-		result.J.push_back( rmat(dim, result.master.dim) );
+		result.J.push_back( rmat(dim, state.master.dim) );
 		rmat& J = result.J.back();
 
 		mapping_graph::out_edge_range out_edges = boost::out_edges(vertex, graph);
 
 		// independent dofs
 		if( out_edges.first == out_edges.second ) {
-			J = shift_right<rmat>(off_master, dim, result.master.dim);
+			J = shift_right<rmat>(off_master, dim, state.master.dim);
 			off_master += dim;
 		} else {
 
@@ -264,6 +195,8 @@ struct assembly_visitor {
 		}
 		
 	}
+
+
 	
 	void operator()(unsigned vertex, const mapping_graph& graph) const {
 		using namespace sofa;
@@ -288,20 +221,22 @@ struct assembly_visitor {
 #include <iostream>
 
 struct debug {
-	const result_type& res;
-
-	debug(const result_type& res) : res(res) {
-
+  const result_type& res;
+  const graph_vector& state;
+  
+  debug(const result_type& res,
+		const graph_vector& state) : res(res), state(state) {
+	
 		std::cout << "master: ";
-		for(unsigned i = 0, n = res.master.vertex.size(); i < n; ++i) {
-			std::cout << res.master.vertex[i] << '\t';
+		for(unsigned i = 0, n = state.master.vertex.size(); i < n; ++i) {
+			std::cout << state.master.vertex[i] << '\t';
 		}
 		std::cout << std::endl;
 
 
 		std::cout << "compliant: ";
-		for(unsigned i = 0, n = res.compliant.vertex.size(); i < n; ++i) {
-			std::cout << res.compliant.vertex[i] << '\t';
+		for(unsigned i = 0, n = state.compliant.vertex.size(); i < n; ++i) {
+			std::cout << state.compliant.vertex[i] << '\t';
 		}
 		std::cout << std::endl;
 		
@@ -318,21 +253,21 @@ struct debug {
 
 
 sofa::component::linearsolver::AssembledSystem assemble(const mapping_graph& graph,
+														const graph_vector& state,
 														const sofa::core::MechanicalParams& params) {
 	// fetch data/concatenate mappings
 	result_type result;
 	result.reserve( boost::num_vertices(graph) );
 	
-	graph.top_down( offset_visitor(result) );
-	graph.top_down( assembly_visitor(result, params) );
+	graph.top_down( assembly_visitor(result, state, params) );
 	
 	using namespace sofa;
-	component::linearsolver::AssembledSystem sys(result.master.dim,
-												 result.compliant.dim);
+	component::linearsolver::AssembledSystem sys(state.master.dim,
+												 state.compliant.dim);
 
 	sys.dt = params.dt();
 	
-	// TODO parallel
+	// TODO parallel !
 
 	// everyone
 	for(unsigned i = 0, n = boost::num_vertices(graph); i < n; ++i) {
@@ -345,10 +280,9 @@ sofa::component::linearsolver::AssembledSystem assemble(const mapping_graph& gra
 	}
 
 	// master dofs
-	sys.master.reserve( result.master.vertex.size() );
-	for(unsigned i = 0, n = result.master.vertex.size(); i < n; ++i) {
-		const unsigned vertex = result.master.vertex[i];
-		const unsigned offset = result.master.offset[i];
+	sys.master.reserve( state.master.vertex.size() ); 
+	for(unsigned i = 0, n = state.master.vertex.size(), offset = 0; i < n; ++i) {
+		const unsigned vertex = state.master.vertex[i];
 
 		sys.master.push_back( graph[ vertex ] );
 	
@@ -356,13 +290,13 @@ sofa::component::linearsolver::AssembledSystem assemble(const mapping_graph& gra
 		
 		// projection block
 		sys.P.middleRows(offset, dim) = shifted_matrix(result.P[i], offset, dim);
+		offset += dim;
 	}
 	
 	// compliant dofs
-	sys.compliant.reserve( result.compliant.vertex.size() );
-	for(unsigned i = 0, n = result.compliant.vertex.size(); i < n; ++i) {
-		const unsigned vertex = result.compliant.vertex[i];
-		const unsigned offset = result.compliant.offset[i];
+	sys.compliant.reserve( state.compliant.vertex.size() );
+	for(unsigned i = 0, n = state.compliant.vertex.size(), offset = 0; i < n; ++i) {
+		const unsigned vertex = state.compliant.vertex[i];
 		
 		sys.compliant.push_back( graph[ vertex ] );
 		
@@ -376,6 +310,7 @@ sofa::component::linearsolver::AssembledSystem assemble(const mapping_graph& gra
 													   offset,
 													   dim,
 													   -1.0 / params.kFactor() );
+		offset += dim;
 	}
 	
 	

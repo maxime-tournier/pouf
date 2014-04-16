@@ -203,21 +203,28 @@ namespace sofa {
 	  }
 
 
-	  // this is c_k computation (see compliant-reference.pdf, section 3)
+	  // this is c_k computation (see compliant-reference.pdf, section
+	  // 3) if non-zero, 'forces' is filled with aggregated forces,
+	  // useful for geometric stiffness computation
 	  static void compute_ck(linearsolver::AssembledSystem::vec& res,
 							 const tool::graph_vector& state,
 							 const tool::mapping_graph& graph,
-							 SReal dt) {
+							 SReal dt,
+							 linearsolver::AssembledSystem::vec* forces = 0) {
 		scoped::timer step("ck computation");
-  
+		
 		// sneaky trick
 		core::MechanicalParams params;
 		params.setMFactor(1.0 / dt);
 		params.setDx( core::ConstVecDerivId::velocity() );
 
+		// ck storage
 		typedef linearsolver::AssembledSystem::vec vec;
 		vec storage = vec::Zero( state.dim );
 
+		// forces storage
+		if( forces ) *forces = vec::Zero( state.dim );
+		
 		// fill forces vector
 		for(unsigned i = 0, n = boost::num_vertices(graph); i < n; ++i) {
 
@@ -233,11 +240,9 @@ namespace sofa {
 			if(!ff->isCompliance.getValue() ) {
 			  ff->addForce(&params, core::VecDerivId::force());
 			}
-			
-			ff->addMBKdx(&params, core::VecDerivId::force());
 		  }
 
-		  // interaction ffields. still don't get why they even exist.
+		  // interaction ffields. these should die once and for all.
 		  for(unsigned j = 0, m = node->interactionForceField.size(); j < m; ++j) {
 			core::behavior::BaseInteractionForceField* ff = node->interactionForceField[j];
 			if(!ff->isCompliance.getValue() ) {
@@ -245,9 +250,22 @@ namespace sofa {
 			}
 		  }
 
-		  // write it to storage 
+		  // write forces if asked for
+		  if( forces ) {
+			graph[i]->copyToBuffer(forces->data() + state.info[i].off,
+								   core::ConstVecDerivId::force(),
+								   state.info[i].dim);
+		  }
+		  
+		  // momentum / dt
+		  for(unsigned j = 0, m = node->forceField.size(); j < m; ++j) {
+			core::behavior::BaseForceField* ff = node->forceField[j];
+			ff->addMBKdx(&params, core::VecDerivId::force());
+		  }
+		  
+		  // write ck / dt
 		  graph[i]->copyToBuffer(storage.data() + state.info[i].off,
-								 core::VecDerivId::force(),
+								 core::ConstVecDerivId::force(),
 								 state.info[i].dim);
 
 		
@@ -257,7 +275,29 @@ namespace sofa {
 		state.pull( storage, graph );
 		state.master.get(res, storage);
 		res *= dt;
+
+		if( forces ) state.pull(*forces, graph);
 	  }
+
+
+	  typedef linearsolver::AssembledSystem::vec vec;
+
+
+	  // copy net forces in force vecid, then trigger geometric
+	  // stiffness computation
+	  static void prepare_geometric_stiffness(const tool::graph_vector& state,
+											  const tool::mapping_graph& graph,
+											  const vec& forces) {
+
+		// fill force vector
+		for(unsigned i = 0, n = boost::num_vertices(graph); i < n; ++i) {
+		  graph[i]->copyFromBuffer(core::VecDerivId::force(),
+								   forces.data() + state.info[i].off,
+								   state.info[i].dim);
+		}
+
+	  }
+
 
 
 
@@ -489,10 +529,13 @@ namespace sofa {
 		const tool::graph_vector state(graph);
 	
 		vec ck = vec::Zero(state.master.dim);
-		compute_ck(ck, state, graph, dt);
-
-		const system_type sys = assemble(graph, mparams);
-
+		vec forces;
+		
+		compute_ck(ck, state, graph, dt, &forces);
+		prepare_geometric_stiffness(state, graph, forces);
+		
+		const system_type sys = assemble(graph, state, mparams);
+		
 		if( debug.getValue() ) sys.debug();
 	
 		// system factor
