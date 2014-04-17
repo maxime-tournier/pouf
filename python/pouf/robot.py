@@ -67,26 +67,28 @@ class Humanoid:
                                 _mesh_path + '/body.obj',
                                 scale * vec( [0, height + 10, -1] ))
 
+        arm_width = 1.7
+        
         self.larm = _make_rigid( 'larm', 
                                 _mesh_path + '/arm.obj',
-                                scale * vec( [2, height + 10.5, -1] ))
+                                scale * vec( [arm_width, height + 10.5, -1] ))
 
         self.lforearm = _make_rigid( 'lforearm', 
                                     _mesh_path + '/arm.obj',
-                                    scale * vec( [2, height + 7.5, -1] ))
+                                    scale * vec( [arm_width, height + 7.5, -1] ))
 
         self.rarm = _make_rigid( 'rarm', 
                                 _mesh_path + '/arm.obj',
-                                scale * vec( [-2, height + 10.5, -1] ))
+                                scale * vec( [-arm_width, height + 10.5, -1] ))
 
         self.rforearm = _make_rigid( 'rforearm', 
                                     _mesh_path + '/arm.obj',
-                                    scale * vec( [-2, height + 7.5, -1] ))
+                                    scale * vec( [-arm_width, height + 7.5, -1] ))
 
 
         self.head = _make_rigid( 'head', 
                                 _mesh_path + '/head.obj',
-                                scale * vec( [0, height + 13, -1] ))
+                                 scale * vec( [0, height + 13, -0.8] ))
         
         self.ltoe = _make_rigid('ltoe', 
                                _mesh_path + '/toe.obj',
@@ -119,7 +121,11 @@ class Humanoid:
 
         for i in [self.rfoot, self.rtoe]:
             i.group = 4
+
+        # for i in [self.head, self.body]:
+        #     i.group = 5
         
+
         # for i in [self.lfoot, self.ltibia]:
         #     i.group = 3
 
@@ -214,21 +220,27 @@ class Humanoid:
         frame.translation = scale * np.array([-1, self.height + 8, -1])
         self.rhip.absolute(frame, self.body.node, self.rfemur.node)
 
-        frame.translation = scale * np.array([2, self.height + 12, -1])
+        # shoulders
+        frame.translation = scale * np.array([self.larm.dofs.translation[0] / scale,
+                                              self.height + 12, -1])
         self.lshoulder.absolute(frame, self.body.node, self.larm.node)
 
-        frame.translation = scale * np.array([-2, self.height + 12, -1])
+        frame.translation = scale * np.array([self.rarm.dofs.translation[0] / scale,
+                                              self.height + 12, -1])
+        
         self.rshoulder.absolute(frame, self.body.node, self.rarm.node)
 
         elbow = (self.larm.dofs.translation[1] + self.lforearm.dofs.translation[1])/ ( 2.0 * scale )
 
-        frame.translation = scale * np.array([2, elbow, -1])
+        frame.translation = scale * np.array([self.larm.dofs.translation[0] / scale,
+                                              elbow, -1])
         self.lelbow.absolute(frame, self.larm.node, self.lforearm.node)
 
-        frame.translation = scale * np.array([-2, elbow, -1])
+        frame.translation = scale * np.array([self.rarm.dofs.translation[0] / scale,
+                                              elbow, -1])
         self.relbow.absolute(frame, self.rarm.node, self.rforearm.node)
 
-        frame.translation = scale * np.array([0, self.height + 13, -1.5])
+        frame.translation = scale * np.array([0, self.height + 13, -1.3])
         self.neck.absolute(frame, self.body.node, self.head.node)
 
         phal = 0.15
