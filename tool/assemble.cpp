@@ -255,11 +255,16 @@ struct debug {
 sofa::component::linearsolver::AssembledSystem assemble(const mapping_graph& graph,
 														const graph_vector& state,
 														const sofa::core::MechanicalParams& params) {
-	// fetch data/concatenate mappings
+  scoped::timer step("assemble");
+  
+  // fetch data/concatenate mappings
 	result_type result;
 	result.reserve( boost::num_vertices(graph) );
-	
-	graph.top_down( assembly_visitor(result, state, params) );
+
+	{
+	  scoped::timer step("fetch/concat");
+	  graph.top_down( assembly_visitor(result, state, params) );
+	}
 	
 	using namespace sofa;
 	component::linearsolver::AssembledSystem sys(state.master.dim,
@@ -267,18 +272,20 @@ sofa::component::linearsolver::AssembledSystem assemble(const mapping_graph& gra
 
 	sys.dt = params.dt();
 	
-	// TODO parallel !
-
 	// everyone
-	for(unsigned i = 0, n = boost::num_vertices(graph); i < n; ++i) {
+	{
+	  scoped::timer step("response pull");
+	  for(unsigned i = 0, n = boost::num_vertices(graph); i < n; ++i) {
 
         // response block
 		if( result.H[i].nonZeros() ) {
-			sys.H += (result.J[i].transpose() * result.H[i] * result.J[i]).selfadjointView<Eigen::Upper>();
+		  sys.H += (result.J[i].transpose() * result.H[i] * result.J[i])
+			.selfadjointView<Eigen::Upper>();
 		}
 		
+	  }
 	}
-
+	
 	// master dofs
 	sys.master.reserve( state.master.vertex.size() ); 
 	for(unsigned i = 0, n = state.master.vertex.size(), offset = 0; i < n; ++i) {
