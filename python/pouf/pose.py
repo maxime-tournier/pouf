@@ -5,8 +5,8 @@ import math
 def setup(servo):
     
     # servo setup
-    stiff = 5e3
-    normal = 1e3
+    stiff = 1e3
+    normal = 5e2
     soft = 1e2
 
     for p in servo.pid:
