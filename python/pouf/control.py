@@ -154,6 +154,7 @@ class Constraint:
     # note: dofs must all have the same dofs
     def __init__(self, name, parent, dofs, rows):
 
+        self.parent = parent
         self.node = parent.createChild(name)
 
         self.compliance = 0
@@ -206,6 +207,17 @@ class Constraint:
         self.ff.damping = self.damping
         self.ff.init()
 
+
+    def enable(self, value):
+        if not value:
+            self.node.detachFromGraph()
+        else:
+            self.parent.addChild( self.node )
+
+
+    def enabled(self):
+        return len(self.node.getParents()) > 0
+        
     def constrained_velocity(self):
         res = np.zeros( self.cols )
 
