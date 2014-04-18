@@ -306,7 +306,11 @@ class Humanoid:
             
         return res / self.mass
 
-
+    # direction of body z
+    def heading(self):
+        return quat.rotate( rigid.rotation( self.body.node ),
+                            np.array([0, 0, 1]) )
+    
 
     # TODO sort these two out ?
     # cop 
