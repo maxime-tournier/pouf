@@ -54,26 +54,19 @@ void pgs::factor(const system_type& system) {
   response->solve(tmp, JP.transpose());
   mapping_response = system.P * tmp;
 	
-  // avoid allocating matrices for each block
-  vec storage;
-
-  inverse_type inv;
   // build blocks and factorize
   for(unsigned i = 0; i < n; ++i) {
 	const block& b = blocks[i];
-		
-	// resize storage if needed TODO alloc max size only once
-	if( b.size * b.size > storage.size() ) storage.resize(b.size * b.size);
-		
-	// view on storage
-	schur_type schur(storage.data(), b.size, b.size);
-		
+
+	// virew on inverse chunk data
+	view_type view(inverse_storage.data() + offsets[i], b.size, b.size);
+
 	// temporary sparse mat, difficult to remove :-/
 	const cmat tmp = JP.middleRows(b.offset, b.size) * 
 	  mapping_response.middleCols(b.offset, b.size);
 		
 	// fill constraint block
-	schur = tmp;
+	view = tmp;
 		
 	// add diagonal C block
 	for( unsigned r = 0; r < b.size; ++r) {
@@ -83,16 +76,13 @@ void pgs::factor(const system_type& system) {
 		assert( it.col() >= int(b.offset) );
 		assert( it.col() < int(b.offset + b.size) );
 				
-		schur(r, it.col() - int(b.offset)) += it.value();
+		view(r, it.col() - int(b.offset)) += it.value();
 	  }
 	}
 
-	inv.compute( schur );
-
-	// view on inverse chunk
-	view_type(inverse_storage.data() + offsets[i], b.size, b.size)
-	  = inv.solve( dense_matrix::Identity( b.size, b.size ) );
-		
+	inverse_type inv( view );
+	view = inv.solve( dense_matrix::Identity( b.size, b.size ) );
+	
   }
 
 }
