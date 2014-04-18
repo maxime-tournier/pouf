@@ -3,6 +3,8 @@ from scipy.spatial import ConvexHull
 import numpy as np
 from numpy import array as vec
 
+import tool
+
 # active point/force list, given a sofa node (created from pouf)
 def active(ground):
     collision = ground.getChild('user').getChild('collision')
@@ -56,6 +58,8 @@ import OpenGL
 from OpenGL.GL import *
 
 def draw(active, polygon, com, scale = 1.5e-3 ):
+    if len(active) == 0: return
+    
     glLineWidth(2.0)
     glDisable(GL_LIGHTING)
 
@@ -150,3 +154,35 @@ def centroid( points ):
     p /= c
 
     return p
+
+
+
+# most of the stuff needed for balance
+# TODO maybe move elsewhere ?
+class Balance:
+    
+    def __init__(self, robot, ground):
+        self.robot = robot
+        self.ground = ground
+        self.gravity = tool.gravity(robot.node)
+
+        self.active = None
+
+    def draw(self):
+        if self.active != None:
+            draw(self.active, self.polygon, self.com)
+        
+    def update(self, dt):
+        self.active = active( self.ground.node )
+        self.polygon = polygon( self.active )
+
+        self.com = self.robot.com()
+        self.dcom = self.robot.dcom()
+        self.am = self.robot.am( self.com )
+
+        self.dt = dt
+        
+        if len(self.polygon) > 0:
+            self.centroid = centroid( [ self.active[i][0] for i in self.polygon ] )
+        else:
+            self.centroid = None
