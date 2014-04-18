@@ -79,6 +79,9 @@ def template(dofs):
     return res
 
 
+def gravity(node):
+    return np.array(node.gravity[0])
+
 
 def hat(x):
     return np.array( [[0, -x[2], x[1]],
