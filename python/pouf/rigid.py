@@ -239,8 +239,7 @@ class Body:
 
 
 
-# some helpers
-
+# some helpers, TODO make this more general
 def translation(node):
     return np.array(node.getObject('dofs').position[0][:3])
 
