@@ -14,6 +14,7 @@ set(HEADER_FILES
 	tool/assemble.h
 	tool/find_insert.h
 	tool/graph_vector.h
+	tool/action.h
 
 	linearsolver/pgs.h
 	
@@ -28,6 +29,8 @@ set(SOURCE_FILES
 	tool/mapping_graph.cpp
 	tool/assemble.cpp
 	tool/graph_vector.cpp
+	tool/action.cpp
+	tool/propagate_position_velocity.cpp
 
 	linearsolver/pgs.cpp
 	)
