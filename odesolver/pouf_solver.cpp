@@ -54,16 +54,20 @@ namespace sofa {
 								 "stabilization",
 								 "apply a stabilization pass on kinematic constraints requesting it")),
 		  debug(initData(&debug,
-						 false,
+						 unsigned(0),
 						 "debug",
 						 "print debug stuff")),
 		  
 		  stabilization_damping(initData(&stabilization_damping,
 										 SReal(1e-7),
 										 "stabilization_damping",
-										 "stabilization damping hint to relax infeasible problems"))
+										 "stabilization damping hint to relax infeasible problems")),
+		  integration(initData(&integration,
+							   true,
+							   "integration",
+							   "integrate positions"))
 	  {
-
+		
 	  }
 
 
@@ -313,6 +317,9 @@ namespace sofa {
 		res.head( sys.m ) = sys.P * ck;
 
 		unsigned off = sys.m;
+
+		if ( sys.n ) res.tail(sys.n).setConstant( -14 );
+		
 		// compliant dofs
 		for(unsigned i = 0, end = sys.compliant.size(); i < end; ++i) {
 		  system_type::dofs_type* dofs = sys.compliant[i];
@@ -536,7 +543,7 @@ namespace sofa {
 		
 		const system_type sys = assemble(graph, state, mparams);
 		
-		if( debug.getValue() ) sys.debug();
+		if( debug.getValue() > 1) sys.debug();
 	
 		// system factor
 		{
@@ -597,7 +604,7 @@ namespace sofa {
 			}
 
 			update_scene(state, graph, x, dt);
-			integrate( &mparams, posId, velId );
+			if( integration.getValue() ) integrate( &mparams, posId, velId );
 
 		  }
 

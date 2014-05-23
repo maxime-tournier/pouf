@@ -76,7 +76,8 @@ class SOFA_pouf_API pouf_solver : public sofa::core::behavior::OdeSolver {
                        const core::ExecParams& params,
                        double dt) const;
 
-    Data<bool> warm_start, aggregate_lambdas, stabilization, debug;
+    Data<bool> warm_start, aggregate_lambdas, stabilization, integration;
+	Data<unsigned> debug;
 	Data<SReal> stabilization_damping;
 	
   protected:
