@@ -15,9 +15,12 @@ set(HEADER_FILES
 	tool/find_insert.h
 	tool/graph_vector.h
 	tool/action.h
+	tool/data.h
 
 	linearsolver/pgs.h
-	
+
+	adaptive/manager.h
+
 	)
 
 set(SOURCE_FILES
@@ -31,8 +34,11 @@ set(SOURCE_FILES
 	tool/graph_vector.cpp
 	tool/action.cpp
 	tool/propagate_position_velocity.cpp
+	tool/data.cpp
 
 	linearsolver/pgs.cpp
+
+	adaptive/manager.cpp
 	)
 
 set(README_FILES
