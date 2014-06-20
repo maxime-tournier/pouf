@@ -285,6 +285,9 @@ class Humanoid:
             
         return res
 
+    # 
+    def mid_feet(self):
+        return 0.5 * ( rigid.translation( self.lfoot.node ) + rigid.translation( self.rfoot.node) )
 
     # center of mass
     def com(self):
