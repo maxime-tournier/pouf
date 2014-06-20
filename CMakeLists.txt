@@ -39,6 +39,8 @@ set(SOURCE_FILES
 	linearsolver/pgs.cpp
 
 	adaptive/manager.cpp
+
+	test/dependency.cpp
 	)
 
 set(README_FILES

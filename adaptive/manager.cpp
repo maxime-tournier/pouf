@@ -1,25 +1,29 @@
 #include "manager.h"
-
+#include "dependency.h"
 
 namespace adaptive {
 
   using namespace sofa;
 
+
+  manager_base::manager_base()
+	: edges(initData(&edges, "edges", "multi-resolution hierarchy topology as a list of edges")),
+	  weights(initData(&weights, "weights", "interpolation weight for each edge")) {
+
+  }
+  
   void manager_base::init() {
 
+	if( edges.getValue().size() != weights.getValue().size() ) {
+	  throw std::runtime_error("edges must be the same lengths as weights");
+	}
+	
 	// find dofs
-	dofs = this->getContext()->get< dofs_type >( core::objectmodel::BaseContext::Local );
+	all = this->getContext()->get< dofs_type >( core::objectmodel::BaseContext::Local );
 
 	// create graph
-	unsigned n = dofs->getSize();
-	graph = graph_type(n);
-
-	// edges creation
-	for(unsigned i = 0, end = edges.getValue().size(); i < end; ++i) {
-	  const pair_type& e = edges.getValue()[i];
-	  
-	  boost::add_edge(e[0], e[1], graph);
-	}
+	unsigned n = all->getSize();
+	graph = make_graph(n, edges.getValue(), weights.getValue());
 
 	// find roots
 	front.clear();
@@ -33,18 +37,18 @@ namespace adaptive {
 	  }
 	}
 
+	post_init();
 	update();
   }
 
 
-  void manager_base::save() {
-	backup = front;
-
+  void manager_base::set_front( const front_type& f ) {
+	front = f;
+	update();
   }
 
-
-  void manager_base::restore() {
-	front = backup;
+  const manager_base::front_type& manager_base::get_front() const {
+	return front;
   }
 
   
@@ -75,13 +79,34 @@ namespace adaptive {
 
 	return res;
   }
-  
 
-  void manager_base::change(operation_type op) {
-	front = candidates(op);
-	update();
+
+  manager_base::dofs_type::SPtr manager_base::dofs() const { return all; }
+
+
+
+
+
+
+
+
+
+  // test yo
+  void manager<sofa::defaulttype::Vec3dTypes>::post_init() {
+
+
   }
 
 
+  // test yo
+  void manager<sofa::defaulttype::Vec3dTypes>::update() {
 
+	graph_type contracted = contract(graph, front);
+
+	// update mapping defs
+	
+  }
+
+
+  
 }
