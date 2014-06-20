@@ -24,6 +24,23 @@ typename Map::mapped_type& find_insert(Map& map,
 	}
 }
 
+
+template<class Set>
+typename Set::value_type& find_insert(Set& set,
+									  const typename Set::value_type& v) {
+  
+  typename Set::iterator lb = set.lower_bound(v);
+	
+  if(lb != set.end() && !(set.comp()(v, lb->first))) {
+	return *lb;
+  } else {
+	typename Set::iterator res = set.insert(lb, v);
+	return *res;
+  }
+  
+}
+
+  
 }
 
 #endif
