@@ -40,9 +40,9 @@ def rotate(q, x):
     return im( prod(q, prod( tmp, conj(q))) )
 
 
-# exponential
+# exponential (for rotations, not unit quaternions)
 def exp(v):
-    theta = np.dot(v, v)
+    theta = math.sqrt( np.dot(v, v) )
     s = math.sin(theta / 2)
     c = math.cos(theta / 2)
 
