@@ -23,6 +23,8 @@ path = pouf.path()
 class Script:
 
     def __init__(self):
+        self.H = None
+        self.L = None
         pass
 
     
@@ -38,7 +40,12 @@ class Script:
         self.am = self.servo.robot.am( self.com )
         self.dcom = self.servo.robot.dcom()
 
-        if len(self.active) > 0:
+        if self.H == None: self.H = np.zeros( np.shape(self.constraint.matrix) )
+        if self.L == None: self.L = np.zeros( np.shape(self.constraint.matrix) )
+        
+        self.constraint.enable( len(self.active) > 0 )
+
+        if self.constraint.enabled():
             u = self.constraint.constrained_velocity()
             robot = self.servo.robot
 
@@ -55,6 +62,8 @@ class Script:
 
             g = np.array([0, -9.81, 0])
 
+            robot = self.servo.robot
+            
             self.constraint.matrix = self.H + pouf.tool.hat(s).dot(self.L)
             self.constraint.value = current + dt * np.cross(s, m * g )
         
@@ -74,8 +83,6 @@ class Script:
         # self.constraint.matrix.fill(0)
         self.constraint.value.fill(0)
 
-        self.H = np.copy(self.constraint.matrix)
-        self.L = np.copy(self.constraint.matrix)
         
         return 0
     
@@ -120,10 +127,10 @@ def createScene(node):
     # cop control
     dofs = [ j.node.getObject('dofs') for j in robot.joints ]
     constraint = pouf.control.Constraint('constraint', node, dofs, 3)
-    constraint.compliance = 0.8
+    constraint.compliance = 0.1
 
     # critical damping
-    constraint.damping = 1e-1 * math.sqrt(robot.mass / constraint.compliance )
+    constraint.damping = 15
     
     # script
     script = Script()
