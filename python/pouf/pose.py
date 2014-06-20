@@ -16,9 +16,10 @@ def setup(servo):
 
 
     ankle = stiff
+    
     kp = {
-        ('lphal', 0): stiff,
-        ('rphal', 0): stiff,
+        ('lphal', 0): normal,
+        ('rphal', 0): normal,
         
         ('lankle', 0): ankle,
         ('lankle', 1): ankle,
@@ -72,6 +73,34 @@ def stand( flex = math.pi / 14 ):
 
              ('lankle', 0): -flex,
              ('rankle', 0): -flex,
+
+             ('lankle', 2): 0,
+             ('rankle', 2): 0,
+
+
+             ('lshoulder', 2): flex,
+             ('rshoulder', 2): -flex,
+             
+             ('lelbow', 0): -2 * flex,
+             ('relbow', 0): -2 * flex,
+    }
+    return pose
+
+
+# posture collection
+def rest( flex = math.pi / 14 ):
+    pose = { ('lknee', 0): 2 * flex,
+             ('rknee', 0): 2 * flex,
+            
+             ('lhip', 0): -2 * flex,
+             ('rhip', 0): -2 * flex,
+
+             ('lhip', 2): 0,
+             ('rhip', 2): 0,
+
+
+             ('lankle', 0): flex / 2,
+             ('rankle', 0): flex / 2,
 
              ('lankle', 2): 0,
              ('rankle', 2): 0,

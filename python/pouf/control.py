@@ -87,6 +87,8 @@ class PID:
 
 
 
+# data.states = ['start', 'foo', 'bar']
+# data.transitions = [('event1', 'start', foo'), ('event2', 'start', bar') ]
 
 class FSM:
 
@@ -122,6 +124,7 @@ class FSM:
             # call cb to see if it matches
             if getattr(self.data, name)():
 
+                # TODO this should go to enter_state
                 # exit current
                 cb = getattr(self.data, 'exit_' + self.current, None)
                 if cb != None: cb()
