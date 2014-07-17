@@ -18,7 +18,8 @@ set(HEADER_FILES
 	tool/data.h
 
 	linearsolver/pgs.h
-
+	linearsolver/qp.h
+	
 	adaptive/manager.h
 
 	)
@@ -35,8 +36,10 @@ set(SOURCE_FILES
 	tool/action.cpp
 	tool/propagate_position_velocity.cpp
 	tool/data.cpp
+	tool/disable_rigid_mouse_interaction.cpp
 
 	linearsolver/pgs.cpp
+	linearsolver/qp.cpp
 
 	adaptive/manager.cpp
 
@@ -52,5 +55,8 @@ add_library(${PROJECT_NAME} SHARED ${HEADER_FILES} ${MOC_FILES} ${SOURCE_FILES} 
 AddCompilerDefinitions("SOFA_BUILD_POUF")
 AddLinkerDependencies(SofaGuiQt Compliant)
 
-
 include(${SOFA_CMAKE_DIR}/postProject.cmake)
+
+# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0 -g")
+# remove_definitions(-DNDEBUG )
+

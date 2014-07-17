@@ -4,6 +4,8 @@
 #include <sofa/component/linearsolver/EigenBaseSparseMatrix.h>
 #include <sofa/simulation/common/Node.h>
 
+#include <tool/log.h>
+
 namespace tool {
 
 struct info_recorder {
@@ -28,8 +30,8 @@ struct info_recorder {
 	void operator()(unsigned vertex, const mapping_graph& graph) const {
 
 		graph_vector::info_type info;
-		info.dim = graph[vertex]->getMatrixSize();
 
+		info.dim = graph[vertex]->getMatrixSize();
 		info.off = res.empty() ? 0 : res.back().off + res.back().dim;
 
 		res.push_back(info);
@@ -145,10 +147,7 @@ void graph_vector::push(vec& storage, const mapping_graph& graph) const {
 			chunk dst(storage.data() + info[j].off,
 						   info[j].dim);
 
-			using namespace sofa;
-			simulation::Node* node = static_cast< simulation::Node*> (graph[j]->getContext());
-
-			push_impl(dst, (*node->mechanicalMapping->getJs())[graph[*e]], src);
+			push_impl(dst, graph[*e].j_block(), src);
 		}
 		
 	}	
@@ -177,10 +176,7 @@ void graph_vector::pull(vec& storage, const mapping_graph& graph) const {
 			chunk dst(storage.data() + info[k].off,
 						   info[k].dim);
 
-			using namespace sofa;
-			simulation::Node* node = static_cast< simulation::Node*> (graph[j]->getContext());
-
-			pull_impl(dst, (*node->mechanicalMapping->getJs())[graph[*e]], src);
+			pull_impl(dst, graph[*e].j_block(), src);
 		}
 		
 	}	

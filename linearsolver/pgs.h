@@ -12,6 +12,8 @@ class pgs : public sofa::component::linearsolver::SequentialSolver {
 public:
 
   virtual void factor(const system_type& system);
+
+  pgs();
   
 protected:
 
@@ -21,10 +23,22 @@ protected:
 
   typedef Eigen::Map< dense_matrix > view_type;
   typedef Eigen::Map< const dense_matrix > const_view_type;
+
+
+  sofa::Data<bool> nlnscg;
+  sofa::Data<unsigned> accel;
+
+  virtual void fetch_blocks(const system_type& system);
+  
+  void solve_impl(vec& x,
+				  const system_type& system,
+				  const vec& rhs,
+				  bool correct) const;
   
   // contiguous data for inverses
   vec inverse_storage;
   std::vector<unsigned> offsets;
+  
 };
 
 

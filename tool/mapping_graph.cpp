@@ -62,6 +62,9 @@ void mapping_graph::set(const std::vector<vertex_type>& data) {
 		}
 		
 		const std::vector<sofa::core::BaseState*> from = node->mechanicalMapping->getFrom();
+
+		const impl::edge::matrix_type* js = node->mechanicalMapping->getJs();
+		const impl::edge::matrix_type* ks = node->mechanicalMapping->getKs();
 		
 		for( unsigned j = 0, m = from.size(); j < m; ++j ) {
 
@@ -75,7 +78,10 @@ void mapping_graph::set(const std::vector<vertex_type>& data) {
 
 			// graph edge from child to parent
 			const edge_descriptor e = boost::add_edge(vertex, parent_vertex, tmp).first;
-			tmp[e] = j;
+
+			tmp[e].js = js;
+			tmp[e].ks = ks;
+			tmp[e].index = j;
 		}
 	}
 
@@ -186,4 +192,18 @@ void mapping_graph::set(sofa::core::objectmodel::BaseContext* context) {
 	set( dofs );
 }
 
+
+  namespace impl {
+	edge::edge() : js(0), ks(0), index(-1) { }
+
+	edge::block_type edge::j_block() const {
+	  return (*js)[index];
+	}
+
+	edge::block_type edge::k_block() const {
+	  return (*ks)[index];
+	}
+
+
+  };
 }

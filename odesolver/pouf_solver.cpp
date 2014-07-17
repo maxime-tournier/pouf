@@ -256,6 +256,9 @@ namespace sofa {
 
 		  // write forces if asked for
 		  if( forces ) {
+			assert( state.info[i].off < forces->size() );
+			assert( state.info[i].off + state.info[i].dim <= forces->size() );
+			
 			graph[i]->copyToBuffer(forces->data() + state.info[i].off,
 								   core::ConstVecDerivId::force(),
 								   state.info[i].dim);
@@ -268,6 +271,9 @@ namespace sofa {
 		  }
 		  
 		  // write ck / dt
+		  assert( state.info[i].off < storage.size() );
+		  assert( state.info[i].off + state.info[i].dim <= storage.size() );
+
 		  graph[i]->copyToBuffer(storage.data() + state.info[i].off,
 								 core::ConstVecDerivId::force(),
 								 state.info[i].dim);
@@ -324,8 +330,8 @@ namespace sofa {
 		for(unsigned i = 0, end = sys.compliant.size(); i < end; ++i) {
 		  system_type::dofs_type* dofs = sys.compliant[i];
 
-		  unsigned dim = dofs->getMatrixSize();
-
+		  const unsigned dim = dofs->getMatrixSize();
+		  
 		  // fetch constraint value if any
 		  BaseConstraintValue::SPtr value =
 			dofs->getContext()->get<BaseConstraintValue>( core::objectmodel::BaseContext::Local );
@@ -338,7 +344,8 @@ namespace sofa {
 
 		  }
 
-		  value->dynamics(&res(off), dim, stabilization.getValue());
+		  const unsigned size = dofs->getSize();
+		  value->dynamics(&res(off), size, dim / size, stabilization.getValue());
 		  off += dim;
 		}
 		assert( off == sys.size() );
@@ -370,7 +377,8 @@ namespace sofa {
 			value->init();
 		  }
 
-		  value->correction(&res(off), dim);
+		  const unsigned size = dofs->getSize();
+		  value->correction(&res(off), dofs->getSize(), dim / size);
 
 		  off += dim;
 		}
@@ -532,9 +540,9 @@ namespace sofa {
 		// graph
 		tool::mapping_graph graph;
 		graph.set(this->getContext());
-	
+
 		const tool::graph_vector state(graph);
-	
+
 		vec ck = vec::Zero(state.master.dim);
 		vec forces;
 		
@@ -544,7 +552,7 @@ namespace sofa {
 		const system_type sys = assemble(graph, state, mparams);
 		
 		if( debug.getValue() > 1) sys.debug();
-	
+
 		// system factor
 		{
 		  scoped::timer step("system factor");
@@ -552,12 +560,12 @@ namespace sofa {
 		}
 
 		// backup current state
-		vec current(sys.size());
+		vec current = vec::Zero(sys.size());
 		get_state(current, sys);
 
 		// system solution / rhs
-		vec x(sys.size());
-		vec rhs(sys.size());
+		vec x = vec::Zero(sys.size());
+		vec rhs = vec::Zero(sys.size());
 
 		// ready to solve yo
 		{
@@ -591,7 +599,6 @@ namespace sofa {
 
 			if( warm_start.getValue() ) x = current;
 			rhs_dynamics(rhs, sys, ck);
-
 
 			kkt->solve(x, sys, rhs);
 			assert( !has_nan(x) );

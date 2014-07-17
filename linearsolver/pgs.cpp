@@ -96,3 +96,177 @@ void pgs::solve_block(chunk_type result, const inverse_type& inv, chunk_type rhs
 									  rhs.size(), rhs.size() ) * rhs;
 
 }
+
+
+
+void pgs::solve_impl(vec& res,
+					 const system_type& sys,
+					 const vec& rhs,
+					 bool correct) const {
+	assert( response );
+
+	// reset bench if needed
+	if( this->bench ) {
+		bench->clear();
+		bench->restart();
+	}
+
+
+	// free velocity
+	vec tmp( sys.m );
+	
+	response->solve(tmp, sys.P.selfadjointView<Eigen::Upper>() * rhs.head( sys.m ) );
+	res.head(sys.m).noalias() = sys.P.selfadjointView<Eigen::Upper>() * tmp;
+	
+	// we're done lol
+	if( !sys.n ) return;
+
+	
+	// lagrange multipliers TODO reuse res.tail( sys.n ) ?
+	vec lambda = res.tail(sys.n); 
+
+	// net constraint velocity correction
+	vec net = mapping_response * lambda;
+	
+	// lambda change work vector
+	vec delta = vec::Zero( sys.n );
+	
+	// lcp rhs 
+	vec constant = rhs.tail(sys.n) - JP * res.head( sys.m );
+	
+	// lcp error
+	vec error = vec::Zero( sys.n );
+	
+	const real epsilon = relative.getValue() ? 
+		constant.norm() * precision.getValue() : precision.getValue();
+
+	if( this->bench ) this->bench->lcp(sys, constant, *response, lambda);
+
+
+	// outer loop
+	unsigned k = 0, max = iterations.getValue();
+	vec primal;
+
+	// nlnscg
+	vec lambda_prev, grad_prev, p, grad;
+
+	// accel
+	dense_matrix G, F, K;
+	vec delta2;
+	
+	const unsigned acc = accel.getValue();
+	
+	if( acc ) {
+	  G = dense_matrix::Zero(sys.n, acc);
+	  F = dense_matrix::Zero(sys.n, acc);
+	  K = dense_matrix::Zero(acc, acc);
+	}
+	
+	inverse_type inv;
+	
+	for(k = 0; k < max; ++k) {
+
+	  lambda_prev = lambda;
+	  
+	  real estimate2 = step( lambda, net, sys, constant, error, delta, correct );
+
+	  if( nlnscg.getValue() ) {
+		grad = -lambda + lambda_prev;
+
+		// conjugation
+		if( k > 0 ) {
+			
+		  assert( grad_prev.norm() > std::numeric_limits<real>::epsilon() );
+		  real beta = grad.squaredNorm() / grad_prev.squaredNorm();
+			
+		  if( beta > 1 ) {
+			// restart
+			p.setZero();
+		  } else {
+			// conjugation
+			lambda += beta * p;
+			p = beta * p - grad;
+		  }
+		} else {
+		  // first iteration
+		  p = -grad;
+		}
+		
+		grad_prev = grad;
+	  }
+
+
+	  if( acc ) {
+		const unsigned index = k % acc;
+
+		G.col(index) = lambda;
+		F.col(index) = lambda - lambda_prev;
+
+		tmp.noalias() = F.transpose() * F.col(index);
+		
+		K.col(index) = tmp;
+		K.row(index) = tmp.transpose();
+
+		inv.compute( K ); 
+		tmp = inv.solve( vec::Ones(acc) );
+
+		const real lambda_inv = tmp.sum();
+		tmp /= lambda_inv;
+
+		lambda = G * tmp;
+	  }
+		
+	  if( this->bench ) this->bench->lcp(sys, constant, *response, lambda);
+		
+	  // stop if we only gain one significant digit after precision
+	  if( std::sqrt(estimate2) / sys.n <= epsilon ) break;
+	}
+	
+	// std::cerr << "sanity check: " << (net - mapping_response * lambda).norm() << std::endl;
+
+	res.head( sys.m ) += net;
+	res.tail( sys.n ) = lambda;
+	
+
+}
+
+pgs::pgs()
+  : nlnscg(initData(&nlnscg, false, "nlnscg", "non-smooth non-linear cg")),
+	accel(initData(&accel, unsigned(0), "accel", "anderson acceleration")) {
+}
+
+
+
+
+void pgs::fetch_blocks(const system_type& system) {
+  using namespace sofa;
+  
+	// TODO don't free memory ?
+	blocks.clear();
+	
+	unsigned off = 0;
+
+	for(unsigned i = 0, n = system.compliant.size(); i < n; ++i) {
+		system_type::dofs_type* const dofs = system.compliant[i];
+
+		const unsigned dim = dofs->getDerivDimension();
+		
+		for(unsigned k = 0, max = dofs->getSize(); k < max; ++k) {
+			
+			block b;
+
+			b.offset = off;
+			b.size = dim;
+            b.projector = dofs->getContext()->get<component::linearsolver::Constraint>( core::objectmodel::BaseContext::Local );
+			
+            assert( !b.projector || b.projector->mask.empty() || b.projector->mask.size() == max );
+            b.activated = true;
+			
+
+			blocks.push_back( b );
+
+			off += dim;
+		}
+	}
+
+}

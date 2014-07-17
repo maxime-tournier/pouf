@@ -4,6 +4,8 @@
 #include <utils/graph.h>
 #include <vector>
 
+#include <sofa/core/Mapping.h>
+
 namespace sofa {
 namespace core {
 class BaseMapping;
@@ -32,14 +34,30 @@ class BaseMatrix;
 	an important property is that kinemactic_graphs are naturally
 	ordered according to a top_down traversal (parents first).
 
-	@author Maxime Tournier
 */
 
 namespace tool {
 
+  namespace impl {
+	struct edge {
+	  typedef sofa::defaulttype::BaseMatrix* block_type;
+	  typedef sofa::vector< block_type > matrix_type;
+
+	  edge();
+	  
+	  const matrix_type* js;
+	  const matrix_type* ks;
+	  
+	  unsigned index;
+
+	  block_type j_block() const;
+	  block_type k_block() const;
+	};
+  }
+  
 class mapping_graph : public utils::graph<sofa::core::behavior::BaseMechanicalState*,
-											unsigned,
-											boost::bidirectionalS> {
+										  impl::edge,
+										  boost::bidirectionalS> {
 public:
 	
 	typedef utils::graph< vertex_type, edge_type, direction_type> base;

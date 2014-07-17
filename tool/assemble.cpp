@@ -162,35 +162,25 @@ struct assembly_visitor {
 			off_master += dim;
 		} else {
 
-			// mapping concatenation
-			const std::vector<defaulttype::BaseMatrix*>* js =
-				node->mechanicalMapping->getJs();
-			
-			for(mapping_graph::out_edge_iterator e = out_edges.first;
-				e != out_edges.second; ++e) {
-
-				const rmat& parent = result.J[ boost::target(*e, graph) ];
-
-				// J += block * parent
-				peq_mult(J, (*js)[ graph[*e] ], parent);
-			}
-
-
-			// geometric stiffness
-			const std::vector<defaulttype::BaseMatrix*>* ks =
-				node->mechanicalMapping->getKs();
-
-			if( !ks ) return;
-			
 			for(mapping_graph::out_edge_iterator e = out_edges.first;
 				e != out_edges.second; ++e) {
 				
-				rmat& parent = result.H[ boost::target(*e, graph) ];
-				
-				// TODO optimize
-				peq_mult(parent, mparams_stiffness.kFactor(), (*ks)[ graph[*e] ] );
+				// mapping concatenation
+				{
+					const rmat& parent = result.J[ boost::target(*e, graph) ];
+					
+					// J += block * parent
+					peq_mult(J, graph[*e].j_block(), parent);
+				}
+
+				// geometric stiffness
+				if( graph[*e].ks ) {
+					rmat& parent = result.H[ boost::target(*e, graph) ];
+					
+					// TODO optimize
+					peq_mult(parent, mparams_stiffness.kFactor(), graph[*e].k_block() );
+				}
 			}
-			
 
 		}
 		
