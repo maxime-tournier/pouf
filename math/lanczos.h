@@ -2,6 +2,7 @@
 #define POUF_MATH_LANCZOS_H
 
 #include <math/types.h>
+#include <stdexcept>
 
 namespace math {
 
@@ -22,38 +23,48 @@ namespace math {
 		k(-1) { }
 	
 	void init(const vec& b) {
+	  k = 0;
+	  
 	  beta = b.norm();
-
-	  // TODO throw
-	  if(!beta) return;
+	  
+	  if( !beta ) {
+		v.setZero(b.size());
+		return;
+	  }
 	  
 	  v = b.normalized();
 	  v_prev = vec::Zero(b.size());
 
-	  k = 0;
 	}
 
 	// lanczos step for M + sigma * I
-
 	template<class Matrix>
 	void step(const Matrix& M) {
+
 	  p.noalias() = M(v);
 	  if( sigma ) p += sigma * v;
-
 	  alpha = p.dot(v);
 
 	  p -= alpha * v + beta * v_prev;
 
 	  // paranoid orthgonalization against previous v
-	  p -= p.dot(v) * v;
+	  // p -= p.dot(v_prev) * v_prev;
+	  // p -= p.dot(v) * v;
 	  
 	  beta = p.norm();
 
 	  // save v before overwriting
 	  v_prev.swap(v);
 
+	  if(!beta) {
+		v.setZero();
+		return;
+	  }
+	  
 	  // normalization
 	  v = p / beta;
+
+	  ++k;
 	}
 
   };

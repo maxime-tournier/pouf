@@ -2,24 +2,23 @@ import math
 
 
 # setup controller with reasonable defaults
-def setup(servo):
+def setup(servo, base = 5e2):
     
     # servo setup
-    stiff = 1e3
-    normal = 5e2
-    soft = 1e2
+    stiff = 10 * base # 5e3
+    normal = base
+    soft = base / 2 # 1e2
 
     for p in servo.pid:
         p.kp = normal
         p.kd = 5
         p.ki = 10
 
-
-    ankle = stiff
+    ankle = normal
     
     kp = {
-        ('lphal', 0): normal,
-        ('rphal', 0): normal,
+        ('lphal', 0): ankle,
+        ('rphal', 0): ankle,
         
         ('lankle', 0): ankle,
         ('lankle', 1): ankle,
@@ -42,7 +41,7 @@ def setup(servo):
     }
 
     # TODO more
-    overdamped = 10
+    overdamped = 5
         
     kd = {
         ('lankle', 0) : overdamped,
@@ -99,15 +98,19 @@ def rest( flex = math.pi / 14 ):
              ('rhip', 2): 0,
 
 
-             ('lankle', 0): flex / 2,
-             ('rankle', 0): flex / 2,
+             # ('lankle', 0): flex / 2,
+             # ('rankle', 0): flex / 2,
+
+             ('lankle', 0): -flex/2,
+             ('rankle', 0): -flex/2,
+
 
              ('lankle', 2): 0,
              ('rankle', 2): 0,
 
 
-             ('lshoulder', 2): flex,
-             ('rshoulder', 2): -flex,
+             ('lshoulder', 2): 1.5 * flex,
+             ('rshoulder', 2): -1.5 * flex,
              
              ('lelbow', 0): -2 * flex,
              ('relbow', 0): -2 * flex,

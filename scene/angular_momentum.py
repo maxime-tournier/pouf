@@ -23,9 +23,7 @@ path = pouf.path()
 class Script:
 
     def __init__(self):
-        self.H = None
-        self.L = None
-        pass
+        self.polygon = None
 
     
     def onBeginAnimationStep(self, dt):
@@ -38,37 +36,10 @@ class Script:
 
         # broyden update for am jacobian
         self.am = self.servo.robot.am( self.com )
-        self.dcom = self.servo.robot.dcom()
-
-        if self.H == None: self.H = np.zeros( np.shape(self.constraint.matrix) )
-        if self.L == None: self.L = np.zeros( np.shape(self.constraint.matrix) )
+        u = self.constraint.constrained_velocity()
+        pouf.control.broyden(self.constraint.matrix, u, self.am) 
         
-        self.constraint.enable( len(self.active) > 0 )
-
-        if self.constraint.enabled():
-            u = self.constraint.constrained_velocity()
-            robot = self.servo.robot
-
-            m = robot.mass
-
-            pouf.control.broyden(self.H, u, self.am);
-            pouf.control.broyden(self.L, u, m * self.dcom);
-
-            # desired cop
-            cop = pouf.contact.centroid( [ self.active[i][0] for i in self.polygon ] )
-            cop = robot.mid_feet()
-            
-            s = self.com - cop
-            current = self.am + np.cross(s, m * self.dcom)
-
-            g = np.array([0, -9.81, 0])
-
-            robot = self.servo.robot
-            
-            self.constraint.matrix = self.H + pouf.tool.hat(s).dot(self.L)
-            self.constraint.value = current + dt * np.cross(s, m * g )
-        
-            self.constraint.update()
+        self.constraint.update()
         
         return 0
 
@@ -79,12 +50,6 @@ class Script:
 
     def reset(self):
         self.servo.reset()
-        self.polygon = None
-
-        # self.constraint.matrix.fill(0)
-        self.constraint.value.fill(0)
-
-        
         return 0
     
 
@@ -125,13 +90,10 @@ def createScene(node):
     pouf.pose.setup( servo )
     servo.set('pos', pouf.pose.stand() )
     
-    # cop control
+    # angular momentum constraint
     dofs = [ j.node.getObject('dofs') for j in robot.joints ]
     constraint = pouf.control.Constraint('constraint', node, dofs, 3)
-    constraint.compliance = 0.1
-
-    # critical damping
-    constraint.damping = 15
+    constraint.compliance = 5e-1 # stiffness inverse
     
     # script
     script = Script()

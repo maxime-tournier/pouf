@@ -4,7 +4,7 @@ import tool
 from tool import concat
 
 import numpy as np
-
+import math
 
 # TODO get rid of this one
 from Compliant import Tools
@@ -85,6 +85,12 @@ class PID:
 
         return res
 
+    def joints(self):
+        res = []
+        for j in self.robot.joints:
+            for i in range(len(j.pid)):
+                res.append( (j.name, i) )
+        return res
 
 
 # data.states = ['start', 'foo', 'bar']
@@ -92,60 +98,90 @@ class PID:
 
 class FSM:
 
-    def __init__(self, data):
-        self.data = data
+    # 
+    def __init__(self):
         self.current = None
-        # TODO build an optimized structure for transitions lookup
-
+        self.debug = None
+        
+        self.states = None
+        self.transitions = None
+        self.initial = None
+        
     def start(self):
-        self.enter_state( self.data.start )
+
+        # TODO build an optimized structure for transitions lookup ?
+        # TODO checks on states/transitions/initial ?
+        self.enter_state( self.initial )
+
+
+    def call(self, name):
+        cb = getattr(self, name, None)
+        if cb != None: return cb()
         
 
     def enter_state(self, s):
         self.current = s
-        if not (self.current in self.data.states):
+        if not (self.current in self.states):
             raise Exception('unknown state ' + s )
 
-        cb = getattr(self.data, 'enter_' + self.current, None)
-        if cb != None: cb()
+        self.call('enter_' + self.current )
 
+        if self.debug != None:
+            print 'state:', s
 
+    def while_state(self, s):
+        self.call('while_' + s )
+
+    def exit_state(self, s):
+        self.call('exit_' + s)
+        
     def step(self):
         if self.current == None:
             raise Exception('machine not started !')
         
         # candidate transitions
-        candidates = [ x for x in self.data.transitions if x[1] == self.current ]
+        candidates = [ x for x in self.transitions if x[1] == self.current ]
 
         old = self.current
         
         for (name, src, dst) in candidates:
 
             # call cb to see if it matches
-            if getattr(self.data, name)():
-
-                # TODO this should go to enter_state
+            if self.call(name):
+                
+                if self.debug != None:
+                    print 'transition:', name
+                
                 # exit current
-                cb = getattr(self.data, 'exit_' + self.current, None)
-                if cb != None: cb()
-
+                self.exit_state( self.current )
+                
                 # new state
                 self.enter_state( dst ) 
-
+                break
+            
         if self.current == old:
-            cb = getattr(self.data, 'while_' + self.current, None)
-            if cb != None: cb()
+            self.while_state(self.current)
 
 
 
 # perform broyden update on J so that J u = v
-def broyden(J, u, v):
+def broyden(J, u, v, kahan = None):
     norm2 = np.inner(u, u)
 
-    if norm2 >= 1e-10:
+    # norm2 = np.linalg.norm(J.dot(u) - v)
+    norm = math.sqrt( norm2 )
+
+    if norm >= 1e-5:
         Ju = J.dot(u)
         lhs = (v - Ju) / norm2
-        J += np.outer(lhs, u)
+
+        if kahan == None:
+            J += np.outer(lhs, u)
+        else:
+            y = np.outer(lhs, u) - kahan
+            t = J + y
+            kahan[:] = (t - J) - y
+            J[:] = t
             
 
 
@@ -154,7 +190,10 @@ def broyden(J, u, v):
 # position'. for a velocity constraint, simply set: value = dt * v
 class Constraint:
 
-    # note: dofs must all have the same dofs
+    # note: dofs must all have the same type
+    
+    # note: make sure dofs are well-initilized (position/velocity
+    # vectors must be correct size)
     def __init__(self, name, parent, dofs, rows):
 
         self.parent = parent
@@ -174,6 +213,8 @@ class Constraint:
         for n in dofs:
             input.append( '@{0}/{1}'.format( Tools.node_path_rel(self.node, n.getContext() ),
                                              n.name ) )
+            
+
             self.cols += tool.matrix_size( n )
 
         self.matrix = np.zeros( (self.rows, self.cols) )
@@ -195,33 +236,52 @@ class Constraint:
                                           matrix = concat( self.matrix.reshape( self.matrix.size ).tolist() ),
                                           value = concat( -self.value ) )
 
-        self.ff = self.node.createObject('UniformCompliance',
+        self.ff = self.node.createObject('DiagonalCompliance',
                                          name = 'ff',
                                          template = 'Vec1d',
-                                         compliance = self.compliance,
-                                         damping = self.damping )
+                                         compliance = concat( self.compliance * np.ones(rows) ),
+                                         damping = concat( self.damping * np.ones(rows)))
         
     def update(self):
         self.map.matrix = concat( self.matrix.reshape(self.matrix.size).tolist() )
         self.map.value = concat( -self.value )
         self.map.init()
 
-        self.ff.compliance = self.compliance
-        self.ff.damping = self.damping
+        self.ff.compliance = concat( self.compliance * np.ones(self.rows) )
+        self.ff.damping = concat( self.damping * np.ones(self.rows))
         self.ff.init()
 
 
     def enable(self, value):
-        if not value:
-            self.node.detachFromGraph()
-        else:
-            self.parent.addChild( self.node )
+        self.node.activated = value
 
 
     def enabled(self):
-        return len(self.node.getParents()) > 0
-        
+        return self.node.activated
+
+
+    def src_vel(self):
+        return self.constrained_velocity()
+
+
+    def src_pos(self):
+        res = np.zeros( self.cols )
+
+        off = 0
+        # TODO optimize !
+        for d in self._constrained_dofs:
+            dim = tool.matrix_size( d )
+            s = d.findData('position').getValueString()
+            res[off:off + dim] = map(float, s.split(' '))
+            off += dim
+
+        return res
+
+
+    
     def constrained_velocity(self):
+        """ velocity of source dofs """
+        
         res = np.zeros( self.cols )
 
         off = 0
@@ -229,6 +289,10 @@ class Constraint:
         for d in self._constrained_dofs:
             dim = tool.matrix_size( d )
             s = d.findData('velocity').getValueString()
+
+            # print off, self.cols
+            # print dim,'/', s, '/', map(float, s.split(' '))
+            
             res[off:off + dim] = map(float, s.split(' '))
             off += dim
 

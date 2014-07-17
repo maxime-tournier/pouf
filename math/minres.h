@@ -116,11 +116,15 @@ namespace math {
 
 	template<class Matrix>
 	void step(vec& x, const Matrix& M) {
+	  // tool::log("minres step, phi", phi);
 	  if( !phi ) return;
 
 	  // note: current v becomes v_prev
-	  lanczos::step(M);
 
+	  // tool::log("before lanczos", "v", v.transpose(), "v_prev", v_prev.transpose());
+	  lanczos::step(M);
+	  // tool::log("after lanczos", "v", v.transpose(), "v_prev", v_prev.transpose());
+	  
 	  const real delta_2 = c * delta_1  +  s * alpha;
 	  const real gamma_1 = s * delta_1  -  c * alpha;
 
@@ -134,13 +138,17 @@ namespace math {
 	  tau = c * phi;
 	  phi = s * phi;
 
-	  if(! gamma_2 ) {
-		core::log("DURRRRR");
-	  }
+	  // tool::log("minres", "tau", tau, "phi", phi);
 
+	  if(!gamma_2) {
+		throw std::logic_error("gamma_2 is zero");
+	  }
+	  
 	  if( gamma_2 ) {
 		d_next = (v_prev  -  delta_2 * d  -  eps * d_prev ) / gamma_2;
-	  
+
+		// tool::log("minres", "d_next", d_next.transpose(), "v_prev", v_prev.transpose());
+		
 		// step solution
 		x += tau * d_next;
 		

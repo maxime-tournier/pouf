@@ -4,6 +4,8 @@ import numpy as np
 from numpy import array as vec
 
 import tool
+import math
+
 
 # active point/force list, given a sofa node (created from pouf)
 def active(ground):
@@ -59,17 +61,17 @@ from OpenGL.GL import *
 
 def draw(active, polygon, com, scale = 1.5e-3 ):
     if len(active) == 0: return
-    
-    glLineWidth(2.0)
-    glDisable(GL_LIGHTING)
+
+    gl.line_width(2.0)
+    gl.lighting( False )
 
     # (closed) polygon
-    glColor([0, 1, 0] )
+    gl.color([0, 1, 0] )
     hull = [ active[i][0] for i in polygon ]
     gl.line_strip( hull + [hull[0]] )
 
     # contact forces
-    glColor([1, 1, 0])
+    gl.color([1, 1, 0])
     for i in range(len(active)):
         (p, f) = active[i]
         gl.line( p, p + scale * f )
@@ -85,23 +87,21 @@ def draw(active, polygon, com, scale = 1.5e-3 ):
 
     # cop
     c = origin + cop( w )
-
-    glColor([1, 0, 0])
+        
+    gl.color([1, 0, 0])
     gl.line( c, c + scale * w[:3] )
 
     # com projection
-    glPointSize(4.0)
-    glColor([0, 0.5, 1])
+    gl.point_size(4.0)
+    gl.color([0, 0.5, 1])
     com_proj = np.copy(com)
     com_proj[1] = origin[1]
     
-    glBegin(GL_POINTS)
-    glVertex(com_proj)
-    glEnd()
+    gl.points( com_proj )
     
-    glEnable(GL_LIGHTING)
-    glLineWidth(1.0)
-    glPointSize(1.0)
+    gl.lighting( True )
+    gl.line_width(1.0)
+    gl.point_size(1.0)
 
 
 
@@ -156,6 +156,39 @@ def centroid( points ):
     return p
 
 
+def project( hull, p ):
+
+    # so that we know where is interior
+    c = np.mean(hull, axis = 0)
+
+    if len(hull) == 1:
+        return c
+
+    for (start, end) in zip(hull, hull[1:] + [hull[0]]):
+
+        line = end - start
+
+        line_T = np.array([-line[2], line[1], line[0]])
+
+        if line_T.dot(c - start) * line_T.dot(p - start) <= 0:
+            # p is outside, project
+            line2 = line.dot(line)
+            # print 'line', line2
+
+            if line2 < 1e-14:
+                print 'degenerate hull !'
+                return start
+
+            coord = line.dot(p - start)
+            if coord < 0: coord = 0
+            if coord > line2: coord = line2
+            
+            p = start + line * coord / line2
+            return p
+
+    return p
+        
+
 
 # most of the stuff needed for balance
 # TODO maybe move elsewhere ?
@@ -166,11 +199,36 @@ class Balance:
         self.ground = ground
         self.gravity = tool.gravity(robot.node)
 
-        self.active = None
-
+        self.active = []
+        self.am = None
+        self.com = None
+        
     def draw(self):
-        if self.active != None:
-            draw(self.active, self.polygon, self.com)
+        scale = 1.5e-3
+        
+        
+        gl.lighting( False )
+        
+        gl.color([0.6, 0.6, 0.6])
+        gl.line_width(4)
+        if self.am != None and self.com != None:
+            gl.line( self.com, self.com + scale * 10 * self.am )
+        
+        gl.color([1., 1., 1.])
+        gl.point_size(5.0)
+        if self.com != None:
+            gl.points( self.com )
+
+        gl.lighting( True )
+
+
+        if self.active:
+            draw(self.active, self.polygon, self.com, scale)
+
+        gl.line_width(1)
+        gl.point_size(1)
+        
+
         
     def update(self, dt):
         self.active = active( self.ground.node )
@@ -182,7 +240,24 @@ class Balance:
 
         self.dt = dt
         
-        if len(self.polygon) > 0:
+        if len(self.active) > 0:
             self.centroid = centroid( [ self.active[i][0] for i in self.polygon ] )
         else:
             self.centroid = None
+            return
+
+        
+        origin = self.active[0][0]
+
+        # contact wrench at origin
+        w = np.zeros( 6 )
+        for (p, f) in self.active:
+            w[:3] += f
+            w[3:] += np.cross(p - origin, f)
+
+        # cop
+        self.cop = origin + cop( w )
+
+    # list of vertices
+    def hull(self):
+        return [ self.active[i][0] for i in self.polygon ]

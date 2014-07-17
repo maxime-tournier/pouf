@@ -12,7 +12,7 @@ path = pouf.path()
 def createScene(node):
     scene = pouf.tool.scene( node )
 
-    num = node.createObject('SequentialSolver',
+    num = node.createObject('pouf.pgs',
                             iterations = 25,
                             precision = 0,
                             omega = 1.2)
@@ -31,17 +31,19 @@ def createScene(node):
     ground.node.createObject('FixedConstraint', 
                              indices = '0' )
 
+    h = 0.5
+    
     box1 = rigid.Body('box1')
     box1.collision = path + '/share/mesh/cube.obj'
-    box1.group = 1
-    box1.dofs.translation = [-2, 2, 0]
+    box1.groups.append(1)
+    box1.dofs.translation = [-2, h, 0]
     
     box1.insert( scene )
 
     box2 = rigid.Body('box2')
     box2.collision = path + '/share/mesh/cube.obj'
-    box2.group = 1
-    box2.dofs.translation = [2, 2, 0]
+    box2.groups.append(1)
+    box2.dofs.translation = [2, h, 0]
 
     box2.insert( scene )
 

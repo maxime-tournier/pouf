@@ -1,3 +1,5 @@
+
+import tool
 from tool import concat
 
 # PID controllers, explicit and implicit
@@ -139,6 +141,11 @@ class Implicit:
 
         self.set_force( self.ki * self.integral )
 
+        # pid acces
+        self.p = self.dofs.position
+        self.d = self.dofs.velocity
+        self.dt = dt
+
     # get/set/add explicit force 
     def get_force(self):
         return self._force
@@ -152,12 +159,19 @@ class Implicit:
         
     # force applied at the end of time step
     def post_force(self):
-        return float(self.dofs.force) + self.kd * float(self.dofs.velocity) + self.get_force()
-
+        v =  self.dofs.velocity
+        
+        elastic =  - self.kp * (self.p + self.dt * v)
+        damping = - self.kd * v
+        explicit = self.get_force()
+        
+        # print self.dofs.force, elastic, implicit
+        return elastic + damping + explicit
+        
     # call this during onEndAnimationStep
     def post_step(self, dt):
         # update integral with error on time step end
-        self.integral -= dt * float(self.dofs.position)
+        self.integral -= dt * self.dofs.position
         
 
 

@@ -72,3 +72,11 @@ def insert(node, script):
     res.impl = script
 
     
+
+
+# convenience
+class Base:
+    def __init__(self, node):
+        insert(node, self)
+
+

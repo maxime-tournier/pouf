@@ -84,13 +84,14 @@ class Base:
                                output = '@dofs',
                                dofs = concat(mask) )
 		
-        compliance = sub.createObject('UniformCompliance',
-                                      name = 'compliance',
-                                      template = 'Vec1d',
-                                      compliance = self.compliance)
+        ff = sub.createObject('UniformCompliance',
+                              name = 'compliance',
+                              template = 'Vec1d',
+                              compliance = self.compliance)
 
         stab = sub.createObject('Stabilization')
-        
+
+        self.ff = ff
         self.node = node
         
         return node

@@ -1,4 +1,3 @@
-import rigid
 from . import path
 
 import re
@@ -8,57 +7,17 @@ import numpy as np
 def concat(x):
     return ' '.join(map(str, x))
 
-# a reasonable standard scene
-def scene(root):
-
-    node = root
-    node.createObject('RequiredPlugin', pluginName = "Compliant" )
-    node.createObject('RequiredPlugin', pluginName = "pouf" )
-    
-    node.dt = 0.01
-    node.gravity = '0 -9.81 0'
-
-
-    node.createObject('DefaultPipeline', name = 'pipeline', verbose = True)
-
-    node.createObject('BruteForceDetection', name = 'detection')
-
-    proximity = node.createObject('NewProximityIntersection',
-                                  name = 'proximity' )
-
-    proximity.alarmDistance = 0.05
-    proximity.contactDistance = 0.02
-
-    manager = node.createObject('DefaultContactManager',
-                                name = 'manager',
-                                response = "FrictionCompliantContact",
-                                responseParams = "mu=0.7" )
-    
-    style = node.createObject('VisualStyle', 
-                              name = 'style',
-                              displayFlags =
-                              'hideBehaviorModels showCollisionModels hideMappings hideForceFields hideVisualModels')
-    
-    scene = node.createChild('scene')
-
-    ode = node.createObject('pouf.solver',
-                            name = 'ode',
-                            warm_start = False,
-                            stabilization = False,
-                            aggregate_lambdas = True)
-    
-    
-    return scene 
 
 
 # insert ground mesh into a node
-def ground(node, position = None):
+def ground(node, position = None, scale = [1, 1, 1] ):
 
     res = rigid.Body('ground')
     res.visual = path() + '/share/mesh/ground.obj'
     res.collision = res.visual
     res.dofs.translation = [0, -1.1, 0]
-
+    res.scale = scale
+    
     if position != None:
         res.dofs.translation += position
         
@@ -88,3 +47,50 @@ def hat(x):
                       [x[2], 0, -x[0]],
                       [-x[1], x[0], 0]])
 
+
+
+
+
+
+import rigid
+# a reasonable standard scene
+def scene(root):
+
+    node = root
+    node.createObject('RequiredPlugin', pluginName = "Compliant" )
+    node.createObject('RequiredPlugin', pluginName = "pouf" )
+    
+    node.dt = 0.005
+    node.gravity = '0 -9.81 0'
+
+
+    node.createObject('DefaultPipeline', name = 'pipeline', verbose = True)
+
+    node.createObject('BruteForceDetection', name = 'detection')
+
+    proximity = node.createObject('NewProximityIntersection',
+                                  name = 'proximity' )
+
+    proximity.alarmDistance = 0.03
+    proximity.contactDistance = 0.02
+
+    manager = node.createObject('DefaultContactManager',
+                                name = 'manager',
+                                response = "FrictionCompliantContact",
+                                responseParams = "mu=0.7" )
+    
+    style = node.createObject('VisualStyle', 
+                              name = 'style',
+                              displayFlags =
+                              'hideBehaviorModels showCollisionModels hideMappings hideForceFields hideVisualModels')
+    
+    scene = node.createChild('scene')
+
+    ode = node.createObject('pouf.solver',
+                            name = 'ode',
+                            warm_start = False,
+                            stabilization = True,
+                            aggregate_lambdas = True)
+    
+    
+    return scene 

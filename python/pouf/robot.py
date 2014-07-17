@@ -1,4 +1,7 @@
+import Sofa
+from Compliant import Tools
 
+import tool
 import rigid
 import joint
 import quat
@@ -19,7 +22,7 @@ def _make_rigid(name, mesh, position = None, density = 1000 ):
     res.collision = mesh
     res.mass_from_mesh( res.visual, density )
 
-    res.inertia_forces = True
+    res.inertia_forces = False
 
     if position != None:
         res.dofs.translation = position
@@ -28,14 +31,21 @@ def _make_rigid(name, mesh, position = None, density = 1000 ):
 
 class Humanoid:
 
+
+    def add_group(self, segments):
+        self.groups.append( segments )
+
+        for i in segments:
+            i.groups.append( len(self.groups))
+
     # TODO add some parameters yo
     def __init__(self, name):
 
         self.name = name
 
         scale = 0.15
-
-
+        self.groups = []
+        
         self.height = 0.3
         height = self.height
 
@@ -110,18 +120,15 @@ class Humanoid:
         self.mass = sum( [ s.mass for s in self.segments ] )
         
         # collision groups
-        for i in self.arm_segments('l'):
-            i.group = 1
+        self.add_group( self.arm_segments('l') )
+        self.add_group( self.arm_segments('r') )
+        
+        self.add_group( [self.lfoot, self.ltoe] )
+        self.add_group( [self.rfoot, self.rtoe] )
 
-        for i in self.arm_segments('r'):
-            i.group = 2
-
-        for i in [self.lfoot, self.ltoe]:
-            i.group = 3
-
-        for i in [self.rfoot, self.rtoe]:
-            i.group = 4
-
+        self.add_group( [self.lfemur, self.body] )
+        self.add_group( [self.rfemur, self.body] )
+            
         # for i in [self.head, self.body]:
         #     i.group = 5
         
@@ -168,23 +175,33 @@ class Humanoid:
             self.inner_dofs += j.dim()
 
         # limits
-        self.lknee.lower_limit = 0
-        self.rknee.lower_limit = 0
+        self.lknee.lower_limit = 1e-1
+        self.rknee.lower_limit = 1e-1
 
-        self.lelbow.upper_limit = 0
-        self.relbow.upper_limit = 0
+        self.lelbow.upper_limit = 1e-1
+        self.relbow.upper_limit = 1e-1
 
         # self.lankle.upper_limit = math.pi / 6
         # self.rankle.upper_limit = math.pi / 6
 
 
     # is the robot contacting the environment ?
-    def contact(self, segment):
-        collision = segment.node.getChild('collision')
+    def contact(self, segment, other = None):
+        user = segment.node.getChild('user')
+        collision = user.getChild('collision')
         
         for c in collision.getChildren():
             if c.name == 'TTriangleModel contact points':
-                return True
+
+                if other == None: return True
+
+                # mapped by the two objects
+                d = c.getChildren()[0]
+                parents = d.getParents()
+
+                for p in parents:
+                    test = p.getParents()[0].getParents()[0].getParents()[0]
+                    if test.name == other.name: return True
                 
         return False
 
@@ -240,7 +257,7 @@ class Humanoid:
                                               elbow, -1])
         self.relbow.absolute(frame, self.rarm.node, self.rforearm.node)
 
-        frame.translation = scale * np.array([0, self.height + 13, -1.3])
+        frame.translation = scale * np.array([0, self.height + 12.5, -1.3])
         self.neck.absolute(frame, self.body.node, self.head.node)
 
         phal = 0.15
@@ -264,7 +281,7 @@ class Humanoid:
 
     # angular momentum about c (usually com)
     def am(self, c):
-        res = vec( [0, 0, 0] )
+        res = np.zeros(3)
         
         for s in self.segments:
             dofs = s.node.getObject('dofs')
@@ -285,13 +302,20 @@ class Humanoid:
             
         return res
 
-    # 
+    #
     def mid_feet(self):
-        return 0.5 * ( rigid.translation( self.lfoot.node ) + rigid.translation( self.rfoot.node) )
 
+        data = [ (2., self.lfoot),
+                 (2., self.rfoot),
+                 (1., self.ltoe),
+                 (1., self.rtoe) ]
+
+        return sum([ x[0] * rigid.translation(x[1].node) for x in data] ) / sum([x[0] for x in data])
+
+    
     # center of mass
     def com(self):
-        res = vec( [0, 0, 0] )
+        res = np.zeros(3)
         
         for s in self.segments:
             pos = vec(s.node.getObject('dofs').position[0][:3])
@@ -301,7 +325,7 @@ class Humanoid:
 
     # com derivative
     def dcom(self):
-        res = vec( [0, 0, 0] )
+        res = np.zeros(3)
         
         for s in self.segments:
             pos = vec(s.node.getObject('dofs').velocity[0][:3])
@@ -312,7 +336,7 @@ class Humanoid:
     # direction of body z
     def heading(self):
         return quat.rotate( rigid.rotation( self.body.node ),
-                            np.array([0, 0, 1]) )
+                            np.array([0., 0., 1.]) )
     
 
     # TODO sort these two out ?
@@ -354,7 +378,7 @@ class Humanoid:
         kkt = np.zeros( (4, 4) )
         kkt[0:3, 0:3] = Q
         
-        A = np.array([0, 1, 0])
+        A = np.array([0., 1., 0.])
 
         kkt[0:3, 3] = A
         kkt[3, 0:3] = A.transpose()
@@ -392,3 +416,52 @@ class Humanoid:
         return [arm, forearm]
 
 
+
+
+
+
+
+
+    def joint_space(self, node):
+        res = node.createChild('joint-space')
+
+        n = self.inner_dofs
+    
+        dofs = res.createObject('MechanicalObject',
+                                name = 'dofs',
+                                template = 'Vec1d',
+                                position = concat( [0] * n ),
+                                velocity = concat( [0] * n ) )
+        
+        
+        input = []
+
+        for j in self.joints:
+            input.append( '@{0}/{1}'.format( Tools.node_path_rel(res, j.node ),
+                                             'dofs' ) )
+
+        m = 6 * len(self.joints)
+        
+        matrix = np.zeros( (n, m) )
+        value = np.zeros(n)
+
+        for i in range(n):
+            col = 0
+
+            for ji, j in enumerate(self.joints):
+                for di, d in enumerate(j.dofs):
+                    if d != 0:
+                        val = (i == col)
+                        matrix[i, ji * 6 + di] = val
+                        col += 1
+
+        map = res.createObject('AffineMultiMapping',
+                               name = 'map',
+                               template = 'Vec6d,Vec1d',
+                               input = concat( input ),
+                               output = '@dofs',
+                               matrix = concat( matrix.reshape( matrix.size ).tolist() ),
+                               value = concat( value ) )
+
+        
+        return res

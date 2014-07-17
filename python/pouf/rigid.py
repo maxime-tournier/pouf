@@ -1,4 +1,5 @@
 import Sofa
+from Compliant import Tools
 
 import subprocess
 
@@ -119,7 +120,7 @@ class Body:
         self.color = [1, 1, 1]   # not sure this is used 
         self.offset = None       # rigid offset for com/inertia axes
         self.inertia_forces = False # compute inertia forces flag
-        self.group = None
+        self.groups = []
         self.mu = 0           # friction coefficient
         self.scale = [1, 1, 1]
 
@@ -174,7 +175,8 @@ class Body:
                                 name = 'mass', 
                                 mass = self.mass, 
                                 inertia = concat(self.inertia),
-                                inertia_forces = self.inertia_forces )
+                                inertia_forces = self.inertia_forces,
+                                draw = True )
                 
         # user node i.e. the one the user provided
         user = res.createChild( 'user' )
@@ -224,8 +226,8 @@ class Body:
                                            name = 'model',
                                            template = 'Vec3d',
                                            contactFriction = self.mu)
-            if self.group != None:
-                model.group = str(self.group)
+            if self.groups != []:
+                model.group = concat(self.groups)
                 
             collision.createObject('RigidMapping',
                                    template = 'Rigid,Vec3d',
@@ -246,4 +248,17 @@ def translation(node):
 def rotation(node):
     return np.array(node.getObject('dofs').position[0][3:])
 
+
+# 
+def pos(node):
+    return np.array(node.getObject('dofs').position[0][:3])
+
+def dpos(node):
+    return np.array(node.getObject('dofs').velocity[0][:3])
+
+def orient(node):
+    return np.array(node.getObject('dofs').position[0][3:])
+
+def dorient(node):
+    return np.array(node.getObject('dofs').velocity[0][3:])
 
