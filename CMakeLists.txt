@@ -21,6 +21,8 @@ set(HEADER_FILES
 	linearsolver/qp.h
 	
 	adaptive/manager.h
+	
+	mapping/RigidMultiMapping.h
 
 	)
 
@@ -37,11 +39,14 @@ set(SOURCE_FILES
 	tool/propagate_position_velocity.cpp
 	tool/data.cpp
 	tool/disable_rigid_mouse_interaction.cpp
+	tool/python.cpp
 
 	linearsolver/pgs.cpp
 	linearsolver/qp.cpp
 
 	adaptive/manager.cpp
+
+	mapping/RigidMultiMapping.cpp
 
 	test/dependency.cpp
 	)
