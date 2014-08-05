@@ -133,10 +133,10 @@ namespace sofa {
 		// fill forces vector
 		for(unsigned i = 0, n = boost::num_vertices(graph); i < n; ++i) {
 
-		  simulation::Node* node = static_cast<simulation::Node*>(graph[i]->getContext());
+		  simulation::Node* node = static_cast<simulation::Node*>(graph[i].mstate->getContext());
 
 		  // reset/accumulate/add forces
-		  graph[i]->resetForce(&params, core::VecDerivId::force() );
+		  graph[i].mstate->resetForce(&params, core::VecDerivId::force() );
 		
 		  // ffields
 		  for(unsigned j = 0, m = node->forceField.size(); j < m; ++j) {
@@ -145,9 +145,9 @@ namespace sofa {
 		  }
 
 		  // write it to storage 
-		  graph[i]->copyToBuffer(storage.data() + state.info[i].off,
-								 core::VecDerivId::force(),
-								 state.info[i].dim);
+		  graph[i].mstate->copyToBuffer(storage.data() + state.info[i].off,
+										core::VecDerivId::force(),
+										state.info[i].dim);
 
 		
 		}
@@ -170,11 +170,11 @@ namespace sofa {
 		// fill forces vector
 		for(unsigned i = 0, n = boost::num_vertices(graph); i < n; ++i) {
 
-		  simulation::Node* node = static_cast<simulation::Node*>(graph[i]->getContext());
+		  simulation::Node* node = static_cast<simulation::Node*>(graph[i].mstate->getContext());
 
 		  // reset/accumulate/add forces
-		  graph[i]->resetForce(&params, core::VecDerivId::force() );
-		  graph[i]->accumulateForce(&params, core::VecDerivId::force() );
+		  graph[i].mstate->resetForce(&params, core::VecDerivId::force() );
+		  graph[i].mstate->accumulateForce(&params, core::VecDerivId::force() );
 
 		  // ffields
 		  for(unsigned j = 0, m = node->forceField.size(); j < m; ++j) {
@@ -194,9 +194,9 @@ namespace sofa {
 		  }
 
 		  // write it to storage 
-		  graph[i]->copyToBuffer(storage.data() + state.info[i].off,
-								 core::VecDerivId::force(),
-								 state.info[i].dim);
+		  graph[i].mstate->copyToBuffer(storage.data() + state.info[i].off,
+										core::VecDerivId::force(),
+										state.info[i].dim);
 
 		
 		}
@@ -232,11 +232,11 @@ namespace sofa {
 		// fill forces vector
 		for(unsigned i = 0, n = boost::num_vertices(graph); i < n; ++i) {
 
-		  simulation::Node* node = static_cast<simulation::Node*>(graph[i]->getContext());
+		  simulation::Node* node = static_cast<simulation::Node*>(graph[i].mstate->getContext());
 
 		  // reset/accumulate/add forces
-		  graph[i]->resetForce(&params, core::VecDerivId::force() );
-		  graph[i]->accumulateForce(&params, core::VecDerivId::force() );
+		  graph[i].mstate->resetForce(&params, core::VecDerivId::force() );
+		  graph[i].mstate->accumulateForce(&params, core::VecDerivId::force() );
 
 		  // ffields
 		  for(unsigned j = 0, m = node->forceField.size(); j < m; ++j) {
@@ -259,9 +259,9 @@ namespace sofa {
 			assert( state.info[i].off < forces->size() );
 			assert( state.info[i].off + state.info[i].dim <= forces->size() );
 			
-			graph[i]->copyToBuffer(forces->data() + state.info[i].off,
-								   core::ConstVecDerivId::force(),
-								   state.info[i].dim);
+			graph[i].mstate->copyToBuffer(forces->data() + state.info[i].off,
+										  core::ConstVecDerivId::force(),
+										  state.info[i].dim);
 		  }
 		  
 		  // momentum / dt
@@ -274,9 +274,9 @@ namespace sofa {
 		  assert( state.info[i].off < storage.size() );
 		  assert( state.info[i].off + state.info[i].dim <= storage.size() );
 
-		  graph[i]->copyToBuffer(storage.data() + state.info[i].off,
-								 core::ConstVecDerivId::force(),
-								 state.info[i].dim);
+		  graph[i].mstate->copyToBuffer(storage.data() + state.info[i].off,
+										core::ConstVecDerivId::force(),
+										state.info[i].dim);
 
 		
 		}
@@ -301,9 +301,9 @@ namespace sofa {
 
 		// fill force vector
 		for(unsigned i = 0, n = boost::num_vertices(graph); i < n; ++i) {
-		  graph[i]->copyFromBuffer(core::VecDerivId::force(),
-								   forces.data() + state.info[i].off,
-								   state.info[i].dim);
+		  graph[i].mstate->copyFromBuffer(core::VecDerivId::force(),
+										  forces.data() + state.info[i].off,
+										  state.info[i].dim);
 		}
 
 	  }
@@ -480,9 +480,9 @@ namespace sofa {
 		  state.push(storage, graph);
 
 		  for(unsigned i = 0, n = boost::num_vertices(graph); i < n; ++i) {
-			graph[i]->copyFromBuffer(core::VecDerivId::velocity(),
-									 storage.data() + state.info[i].off,
-									 state.info[i].dim);
+			graph[i].mstate->copyFromBuffer(core::VecDerivId::velocity(),
+											storage.data() + state.info[i].off,
+											state.info[i].dim);
 		  }
 		
 		}
@@ -500,9 +500,9 @@ namespace sofa {
 			const unsigned vertex = state.compliant.vertex[i];
 			const unsigned dim = state.info[vertex].dim;
 		
-			graph[vertex]->copyFromBuffer(lagrange.id().getId( graph[vertex] ),
-										  forces.data() + off,
-										  dim);
+			graph[vertex].mstate->copyFromBuffer(lagrange.id().getId( graph[vertex].mstate ),
+												 forces.data() + off,
+												 dim);
 			off += dim;
 		  }
 		
@@ -516,9 +516,9 @@ namespace sofa {
 		  state.pull(storage, graph);
 		
 		  for(unsigned i = 0, n = boost::num_vertices(graph); i < n; ++i) {
-			graph[i]->copyFromBuffer(core::VecDerivId::force(),
-									 storage.data() + state.info[i].off,
-									 state.info[i].dim);
+			graph[i].mstate->copyFromBuffer(core::VecDerivId::force(),
+											storage.data() + state.info[i].off,
+											state.info[i].dim);
 		  }
 		
 		}

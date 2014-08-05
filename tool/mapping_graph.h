@@ -53,16 +53,22 @@ namespace tool {
 	  block_type j_block() const;
 	  block_type k_block() const;
 	};
+
+	struct vertex {
+	  typedef sofa::core::behavior::BaseMechanicalState* mstate_type;
+	  mstate_type mstate;
+	};
   }
   
-class mapping_graph : public utils::graph<sofa::core::behavior::BaseMechanicalState*,
-										  impl::edge,
-										  boost::bidirectionalS> {
+  class mapping_graph : public utils::graph<impl::vertex,
+											impl::edge,
+											boost::bidirectionalS> {
 public:
-	
+
+	typedef impl::vertex::mstate_type mstate_type;
 	typedef utils::graph< vertex_type, edge_type, direction_type> base;
 
-	void set(const std::vector<vertex_type>& dofs);
+	void set(const std::vector<mstate_type>& dofs);
 	void set(sofa::core::objectmodel::BaseContext* context);
 
 	template<class Visitor>

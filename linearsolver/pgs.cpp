@@ -1,7 +1,9 @@
 #include "pgs.h"
 
 #include <sofa/core/ObjectFactory.h>
-#include <utils/scoped.h>
+#include <Compliant/utils/scoped.h>
+#include <Compliant/utils/edit.h>
+
 
 // SOFA_DECL_CLASS(SequentialSolver);
 int pgsClass = sofa::core::RegisterObject("pgs")
@@ -10,6 +12,10 @@ int pgsClass = sofa::core::RegisterObject("pgs")
 
 void pgs::factor(const system_type& system) { 
   scoped::timer timer("system factorization");
+
+  if( log.getValue() ) {
+    edit(convergence)->clear();
+  }
 
   typedef sofa::component::linearsolver::Benchmark benchmark_type;
 
@@ -87,6 +93,31 @@ void pgs::factor(const system_type& system) {
 
 }
 
+
+
+static pgs::real track(const pgs::vec& prev,
+					   const pgs::vec& delta, unsigned* index = 0,
+					   pgs::real epsilon = 0) {
+  
+  pgs::real alpha = 1;
+
+  for(unsigned i = 0, n = delta.size(); i < n; ++i) {
+	  
+	  if( delta(i) ) {
+		const pgs::real value = - prev(i) / delta(i);
+
+		if( value >= epsilon && value < alpha ) {
+		  alpha = value;
+		  if( index ) *index = i;
+		}
+	  }
+
+	};
+
+  return alpha;
+}
+
+
 void pgs::solve_block(chunk_type result, const inverse_type& inv, chunk_type rhs) const {
 
   // i smell hack
@@ -110,7 +141,6 @@ void pgs::solve_impl(vec& res,
 		bench->clear();
 		bench->restart();
 	}
-
 
 	// free velocity
 	vec tmp( sys.m );
@@ -148,22 +178,26 @@ void pgs::solve_impl(vec& res,
 	vec primal;
 
 	// nlnscg
-	vec lambda_prev, grad_prev, p, grad;
+	vec lambda_prev, grad_prev, p, grad, next, diff;
 
 	// accel
 	dense_matrix G, F, K;
 	vec delta2;
 	
 	const unsigned acc = accel.getValue();
+	const unsigned acc_alt = accel_alt.getValue();
 	
-	if( acc ) {
-	  G = dense_matrix::Zero(sys.n, acc);
-	  F = dense_matrix::Zero(sys.n, acc);
-	  K = dense_matrix::Zero(acc, acc);
+	if( acc || acc_alt) {
+	  unsigned dim = std::max(acc, acc_alt);
+	  G = dense_matrix::Zero(sys.n, dim);
+	  F = dense_matrix::Zero(sys.n, dim);
+	  K = dense_matrix::Zero(dim, dim);
 	}
-	
+
 	inverse_type inv;
-	
+
+	unsigned s1 = convergence.getValue().size();
+ 
 	for(k = 0; k < max; ++k) {
 
 	  lambda_prev = lambda;
@@ -196,7 +230,7 @@ void pgs::solve_impl(vec& res,
 	  }
 
 
-	  if( acc ) {
+	  if( acc && lambda != lambda_prev ) {
 		const unsigned index = k % acc;
 
 		G.col(index) = lambda;
@@ -213,13 +247,74 @@ void pgs::solve_impl(vec& res,
 		const real lambda_inv = tmp.sum();
 		tmp /= lambda_inv;
 
-		lambda = G * tmp;
+		next.noalias() = G * tmp;
+		diff = next - lambda;
+		
+		const real alpha = track(lambda, diff);
+		lambda += alpha * diff;
 	  }
+
+
+	  if( acc_alt && lambda != lambda_prev ) {
+		const unsigned index = k % acc_alt;
+
+		G.col(index) = lambda;
+		F.col(index) = lambda - lambda_prev;
+
+		// const unsigned index_prev = (k + acc_alt - 1) % acc_alt;
+		// const unsigned index_next = (k + 1) % acc_alt;
+		
+		// vec p = F.col(index_prev);
+		// vec r = F.col(index);
+
+		// vec Ap = JP * (mapping_response * p);
+
+		// real pAp = p.dot(Ap);
+		// if( pAp ) { 
+		//   real mu = -r.dot(Ap) / pAp;
+		//   p = r + mu * p;
+
+		//   F.col(index_next) = p;
+		//   G.col(index_next) = lambda + p;
+		// }
+
+		tmp.noalias() = F.transpose() * F.col(index);
+		K.col(index) = tmp;
+		K.row(index) = tmp.transpose();
+
+		// K = F.transpose() * F;
+
+		// std::cout << K << std::endl;
+
+		inv.compute( K ); 
+		tmp = inv.solve( vec::Ones(acc_alt) );
+
+		const real lambda_inv = tmp.sum();
+		tmp /= lambda_inv;
+
+		next.noalias() = G * tmp;
+		lambda = next.cwiseMax( vec::Zero(sys.n) );
+
+		// diff = next - lambda;
+		
+		// const real alpha = track(lambda, diff);
+		// lambda += alpha * diff;
+	  }
+
+	  
 		
 	  if( this->bench ) this->bench->lcp(sys, constant, *response, lambda);
-		
+
+
+	  if( log.getValue() ) {
+		primal = JP * net - constant;
+		real error = lambda.cwiseMin(primal).norm();
+		edit(convergence)->push_back(error);
+		if( error <= epsilon ) break;
+	  } else { 
 	  // stop if we only gain one significant digit after precision
-	  if( std::sqrt(estimate2) / sys.n <= epsilon ) break;
+		if( std::sqrt(estimate2) / sys.n <= epsilon ) break;
+	  }
 	}
 	
 	// std::cerr << "sanity check: " << (net - mapping_response * lambda).norm() << std::endl;
@@ -227,12 +322,19 @@ void pgs::solve_impl(vec& res,
 	res.head( sys.m ) += net;
 	res.tail( sys.n ) = lambda;
 	
-
+	if(log.getValue()){
+	  edit(convergence)->push_back(convergence.getValue().size() - s1);
+	}
 }
 
 pgs::pgs()
   : nlnscg(initData(&nlnscg, false, "nlnscg", "non-smooth non-linear cg")),
-	accel(initData(&accel, unsigned(0), "accel", "anderson acceleration")) {
+	accel(initData(&accel, unsigned(0), "accel", "anderson acceleration")),
+	accel_alt(initData(&accel_alt, unsigned(0), "accel_alt", "custom anderson acceleration")),
+	log(initData(&log, false, "log", "log convergence history")),
+	convergence(initData(&convergence, "convergence", "convergence history (read-only)"))
+{
+
 }
 
 

@@ -29,13 +29,13 @@ struct printer {
 }
 
 
-void mapping_graph::set(const std::vector<vertex_type>& data) {
+void mapping_graph::set(const std::vector<impl::vertex::mstate_type>& data) {
 
 	// reset
 	base tmp(data.size());
 	
 	// index map
-	std::map<vertex_type, unsigned> index;
+	std::map<mstate_type, unsigned> index;
 
 	// mechanical flags
 	std::vector<bool> mechanical(data.size(), false);
@@ -46,7 +46,7 @@ void mapping_graph::set(const std::vector<vertex_type>& data) {
 	for(unsigned i = 0, n = data.size(); i < n; ++i) {
 
 		const unsigned vertex = find_insert(index, data[i], index.size());
-		tmp[vertex] = data[i];
+		tmp[vertex].mstate = data[i];
 		
 		sofa::simulation::Node* node = static_cast<sofa::simulation::Node*>(data[i]->getContext());
 		assert( dynamic_cast<sofa::simulation::Node*>( data[i]->getContext() ) );
@@ -69,12 +69,12 @@ void mapping_graph::set(const std::vector<vertex_type>& data) {
 		for( unsigned j = 0, m = from.size(); j < m; ++j ) {
 
 			// parent dofs
-			const vertex_type p = dynamic_cast<vertex_type>(from[j]);
+			const mstate_type p = dynamic_cast<mstate_type>(from[j]);
 
 			if( !p ) throw std::logic_error("non mechanical parent :-/");
 			
 			const unsigned parent_vertex = find_insert(index, p, index.size());
-			tmp[parent_vertex] = p;
+			tmp[parent_vertex].mstate = p;
 
 			// graph edge from child to parent
 			const edge_descriptor e = boost::add_edge(vertex, parent_vertex, tmp).first;
@@ -162,17 +162,17 @@ void mapping_graph::set(const std::vector<vertex_type>& data) {
 // simply record mstates as the graph is visited
 struct dofs_recorder : sofa::simulation::MechanicalVisitor {
 
-	std::vector<mapping_graph::vertex_type>& out;
+	std::vector<mapping_graph::mstate_type>& out;
 
 	sofa::core::MechanicalParams mparams;
-	dofs_recorder(std::vector<mapping_graph::vertex_type>& out)
+	dofs_recorder(std::vector<mapping_graph::mstate_type>& out)
 		: sofa::simulation::MechanicalVisitor(&mparams),
 		  out(out) { }
 	
 	Result processNodeTopDown(sofa::simulation::Node* node) {
 
 		if( node->mechanicalState ) {
-			out.push_back( node->mechanicalState );
+		  out.push_back( node->mechanicalState );
 		}
 		
 		return RESULT_CONTINUE;
@@ -184,7 +184,7 @@ struct dofs_recorder : sofa::simulation::MechanicalVisitor {
 
 void mapping_graph::set(sofa::core::objectmodel::BaseContext* context) {
 
-	std::vector<vertex_type> dofs;
+	std::vector<mstate_type> dofs;
 	dofs_recorder vis(dofs);
 	
 	context->executeVisitor( &vis );

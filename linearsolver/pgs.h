@@ -26,7 +26,7 @@ protected:
 
 
   sofa::Data<bool> nlnscg;
-  sofa::Data<unsigned> accel;
+  sofa::Data<unsigned> accel, accel_alt;
 
   virtual void fetch_blocks(const system_type& system);
   
@@ -38,7 +38,11 @@ protected:
   // contiguous data for inverses
   vec inverse_storage;
   std::vector<unsigned> offsets;
+
+  sofa::Data<bool> log;
+  mutable sofa::Data<sofa::vector<real> > convergence;
   
+
 };
 
 

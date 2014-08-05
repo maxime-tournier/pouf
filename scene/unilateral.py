@@ -16,6 +16,10 @@ import pouf.plot
 
 import numpy as np
 
+import random
+
+random.seed(14)
+
 class Script:
 
 
@@ -23,18 +27,23 @@ class Script:
         self.count = 0
     
     def onEndAnimationStep(self, dt):
-        every = int(0.05 / dt)
+        every = int(0.10 / dt)
 
-        if self.count % every == 0:
+        if self.count % every == 0 and self.node.getTime() <= 15:
             radius = 0.02
+
+            rho = 1 + random.randrange(1000) / 10
             mass = 4/3 * math.pi * (radius * radius * radius)
             ball(self.node, [0, 1, 0], mass, radius)
+            # box(self.node, [0, 0.6, 0], mass, radius)
+            
         self.count += 1
-        # return 0
+        return 0
     
         data = {}
         cv = [ x[0] for x in self.qp.convergence if x[0] > 0]
 
+        # print self.qp.convergence
         
         if len(cv) > 0:
             last = int(cv[-1])
@@ -45,17 +54,17 @@ class Script:
             data['dynamics'] = (range(len(dynamics)), dynamics)
             data['correction'] = (range(len(correction)), correction)
 
-            pouf.plot.draw( data )
+            pouf.plot.draw( data, None, True )
             
 
 
-def box(pos, mass = 1):
-    b = pouf.rigid.Body()
-    b.collision = mesh_path + '/cube.obj'
-    b.mass = mass
-    b.inertia = [mass, mass, mass]
-    b.dofs.translation = pos
-    return b
+# def box(pos, mass = 1):
+#     b = pouf.rigid.Body()
+#     b.collision = mesh_path + '/cube.obj'
+#     b.mass = mass
+#     b.inertia = [mass, mass, mass]
+#     b.dofs.translation = pos
+#     return b
 
 def ball(node, pos, mass, radius = 0.5):
 
@@ -66,7 +75,24 @@ def ball(node, pos, mass, radius = 0.5):
     res.createObject('SphereModel', radius = radius)
 
     return res
+
+def box(node, pos, mass, radius = 0.5):
     
+    res = rigid.Body('box-{0}'.format(random.randrange(1000)))
+    res.collision = pouf.path() + '/share/mesh/cube.obj'
+    res.dofs.translation = pos
+    # res.mass_from_mesh( res.collision, 10 )
+
+    res.scale = 2 * radius * np.ones(3)
+    res.mass = mass
+    res.inertia = res.scale * res.scale * mass
+    
+    res.insert( node )
+    
+    return res.node
+
+
+
 def stack(node, n):
     for i in range(n):
         box([0, 1 + 1.5 * i, 0]).insert( node )
@@ -88,12 +114,21 @@ def createScene(node):
     # node.createObject('RequiredPlugin',
     #                   pluginName = 'CompliantDev' )
     
-    num = node.createObject('pouf.qp',
-                            iterations = 100,
+    # num = node.createObject('pouf.qp',
+    #                         iterations = 100,
+    #                         precision = 1e-8,
+    #                         schur = True,
+    #                         filename = '/tmp/lcp')
+
+
+    num = node.createObject('pouf.pgs',
+                            iterations = 200,
                             precision = 1e-8,
-                            schur = True,
-                            filename = '/tmp/lcp')
-    
+                            # nlnscg = True,
+                            accel_alt = 4,
+                            # accel = 4,
+                            log = True)
+
     node.createObject('LDLTResponse', regularize = 0)
     
     ode = node.getObject('ode')
@@ -101,8 +136,8 @@ def createScene(node):
     ode.stabilization_damping = 1e-3
 
     proximity = node.getObject('proximity')
-    proximity.alarmDistance = 0.008
-    proximity.contactDistance = 0.005
+    proximity.alarmDistance = 0.005
+    proximity.contactDistance = 0.001
     
     manager = node.getObject('manager')
 
@@ -122,4 +157,4 @@ def createScene(node):
     script.node = node
     
     pouf.script.insert( node, script )
-
+    node.dt = 5e-3

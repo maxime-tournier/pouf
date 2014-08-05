@@ -99,7 +99,7 @@ struct assembly_visitor {
 		// only for independent dofs
 		if( out_edges.first != out_edges.second ) return;
 		
-		const unsigned dim = graph[vertex]->getMatrixSize();
+		const unsigned dim = graph[vertex].mstate->getMatrixSize();
 
 		component::linearsolver::EigenBaseSparseMatrix<real> tmp;
 		tmp.compressedMatrix = sofa::shift_right<rmat>(0, dim, dim);
@@ -116,7 +116,7 @@ struct assembly_visitor {
 				sofa::simulation::Node* node, 
 				const mapping_graph& graph) const {
 		
-		const unsigned dim = graph[vertex]->getMatrixSize();
+		const unsigned dim = graph[vertex].mstate->getMatrixSize();
 		using namespace sofa;
 		component::linearsolver::EigenBaseSparseMatrix<real> sqmat( dim, dim );
 		component::linearsolver::SingleMatrixAccessor accessor( &sqmat );
@@ -146,7 +146,7 @@ struct assembly_visitor {
 	void push_J(unsigned vertex,
 				sofa::simulation::Node* node,
 				const mapping_graph& graph) const {
-		unsigned dim = graph[vertex]->getMatrixSize();
+		unsigned dim = graph[vertex].mstate->getMatrixSize();
 		
 		using namespace sofa;
 		
@@ -191,7 +191,7 @@ struct assembly_visitor {
 	void operator()(unsigned vertex, const mapping_graph& graph) const {
 		using namespace sofa;
 
-		core::behavior::BaseMechanicalState* dofs = graph[vertex];
+		core::behavior::BaseMechanicalState* dofs = graph[vertex].mstate;
 		simulation::Node* node = static_cast<simulation::Node*>(dofs->getContext());
 
 		// TODO these 3 can be parallel
@@ -234,8 +234,8 @@ struct debug {
 	
 	void operator()(unsigned i, const mapping_graph& graph) const {
 
-		std::cout << i << ": " << graph[i]->getContext()->getName()
-				  << "/" << graph[i]->getName() << std::endl;
+		std::cout << i << ": " << graph[i].mstate->getContext()->getName()
+				  << "/" << graph[i].mstate->getName() << std::endl;
 		
 	}
 };
@@ -281,9 +281,9 @@ sofa::component::linearsolver::AssembledSystem assemble(const mapping_graph& gra
 	for(unsigned i = 0, n = state.master.vertex.size(), offset = 0; i < n; ++i) {
 		const unsigned vertex = state.master.vertex[i];
 
-		sys.master.push_back( graph[ vertex ] );
+		sys.master.push_back( graph[ vertex ].mstate );
 	
-		const unsigned dim = graph[ vertex ]->getMatrixSize();
+		const unsigned dim = graph[ vertex ].mstate->getMatrixSize();
 		
 		// projection block
 		sys.P.middleRows(offset, dim) = shifted_matrix(result.P[i], offset, dim);
@@ -295,9 +295,9 @@ sofa::component::linearsolver::AssembledSystem assemble(const mapping_graph& gra
 	for(unsigned i = 0, n = state.compliant.vertex.size(), offset = 0; i < n; ++i) {
 		const unsigned vertex = state.compliant.vertex[i];
 		
-		sys.compliant.push_back( graph[ vertex ] );
+		sys.compliant.push_back( graph[ vertex ].mstate );
 		
-		const unsigned dim = graph[ vertex ]->getMatrixSize();
+		const unsigned dim = graph[ vertex ].mstate->getMatrixSize();
 
 		// mapping block
 		sys.J.middleRows(offset, dim) = result.J[ vertex ];

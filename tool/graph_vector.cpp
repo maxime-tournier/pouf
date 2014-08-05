@@ -31,7 +31,7 @@ struct info_recorder {
 
 		graph_vector::info_type info;
 
-		info.dim = graph[vertex]->getMatrixSize();
+		info.dim = graph[vertex].mstate->getMatrixSize();
 		info.off = res.empty() ? 0 : res.back().off + res.back().dim;
 
 		res.push_back(info);
@@ -43,7 +43,7 @@ struct info_recorder {
 			master.dim += info.dim;
 		} else {
 			using namespace sofa;
-			simulation::Node* node = static_cast<simulation::Node*>(graph[vertex]->getContext());
+			simulation::Node* node = static_cast<simulation::Node*>(graph[vertex].mstate->getContext());
 			
 			// compliant ?
 			for(unsigned j = 0, m = node->forceField.size(); j < m; ++j ) {
