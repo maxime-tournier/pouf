@@ -220,11 +220,12 @@ class State( pouf.control.FSM ):
             factor = 1 / m
             self.am.matrix *= factor
             self.am.value *= factor
-            
-            diag = np.diagonal(self.am.matrix.dot(self.am.matrix.transpose()))
-            self.am.damping = self.gui.am.compliance.value() * diag            
 
-            
+            # levmar
+            diag = np.diagonal(self.am.matrix.dot(self.am.matrix.transpose()))
+            # self.am.compliance = ( diag * self.gui.am.compliance.value() )        
+
+            print 'am compliance', self.am.compliance
             # self.am.compliance = self.gui.am.compliance.value() * error;
             self.am.update()
 
@@ -269,9 +270,12 @@ class State( pouf.control.FSM ):
             self.com.value = -delta[0:3:2]
 
             # levmar stuff
-            diag = np.diagonal(self.K.dot(self.K.transpose()))
-            self.com.damping = self.gui.com.compliance.value() * diag            
+            # TODO this should be K Minv K^T diagonal
             
+            diag = np.diagonal(self.K.dot(self.K.transpose()))
+            # self.com.compliance = (diag * self.gui.com.compliance.value())
+            
+            # print 'com compliance', self.com.compliance
             # print self.com.damping
 
             # self.com.compliance = self.gui.com.compliance.value() * error
@@ -406,8 +410,8 @@ def createScene(node):
     c = 1e-4
     p = {
         'am' : {
-            'compliance': 1e-5,
-            'damping': 10
+            'compliance': 1e-4,
+            'damping': 1
         },
         'com' : {
             'compliance': c ,

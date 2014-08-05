@@ -1,14 +1,18 @@
 import matplotlib.pyplot as plt
 
 
-def draw( data ):
-    plt.cla()
-    
+def draw( data, figure = None, log = None ):
+    if figure:
+        plt.figure( figure )
+
+    plt.clf()
+        
     for label in data:
         (x, y) = data[label]
         plt.plot(x, y, label = label)
 
-    # plt.yscale('log')
+    if log:
+        plt.yscale('log')
     plt.legend()
     
     plt.draw()

@@ -64,7 +64,7 @@ def scene(root):
     node.gravity = '0 -9.81 0'
 
 
-    node.createObject('DefaultPipeline', name = 'pipeline', verbose = True)
+    node.createObject('DefaultPipeline', name = 'pipeline')
 
     node.createObject('BruteForceDetection', name = 'detection')
 
@@ -89,7 +89,7 @@ def scene(root):
     ode = node.createObject('pouf.solver',
                             name = 'ode',
                             warm_start = False,
-                            stabilization = True,
+                            stabilization = False,
                             aggregate_lambdas = True)
     
     

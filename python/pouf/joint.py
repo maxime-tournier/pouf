@@ -38,6 +38,8 @@ class Base:
     def insert(self, parent):
         
         node = parent.createChild(self.name)
+
+        self.offset_node = []
         
         # build input data for multimapping
         input = []
@@ -46,6 +48,8 @@ class Base:
                 input.append( '@' + Tools.node_path_rel(node, b) + '/dofs' )
             else:
                 joint = b.createChild( self.name + '-offset' )
+                self.offset_node.append( joint )
+                
                 joint.createObject('MechanicalObject', 
                                    template = 'Rigid', 
                                    name = 'dofs' )

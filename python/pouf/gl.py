@@ -3,9 +3,11 @@ OpenGL.ERROR_CHECKING = False
 from OpenGL.GL import *
 
 
-def line_strip( vertex_list ):
+def line_strip( vertex_list, color_list = None ):
     glBegin(GL_LINE_STRIP)
-    for v in vertex_list:
+    for i, v in enumerate(vertex_list):
+        if color_list:
+            glColor( color_list[i] )
         glVertex( v )
     glEnd()
 
@@ -45,3 +47,12 @@ def lighting( b ):
 
 def depth_test( b ):
     enable(GL_DEPTH_TEST, b)
+
+
+def blend( b ):
+    if b:
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+        glEnable( GL_BLEND )
+    else:
+        glDisable( GL_BLEND )
+        

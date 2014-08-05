@@ -16,13 +16,11 @@ class Frame:
 
         if value == None:
             self.__dict__['data'] = np.zeros(7)
+            self.translation =  [0, 0, 0]
+            self.rotation = [0, 0, 0, 1]
         else:
-            self.__dict__['data'] = value
+            self.__dict__['data'] = np.array(value)
             
-        self.translation =  [0, 0, 0]
-        self.rotation = [0, 0, 0, 1]
-
-
     def __getattr__(self, name):
         if name == 'rotation': return self.data[3:]
         elif name == 'translation': return self.data[:3]
@@ -57,6 +55,10 @@ class Frame:
         return res
 
 
+    def __call__(self, x):
+        return self.translation + quat.rotate(self.rotation, x)
+
+    
 class MassInfo:
         pass
 
@@ -149,8 +151,8 @@ class Body:
             s = np.array(self.scale)
             vol = s[0] * s[1] * s[2]
             
-            mass = vol * self.mass
-            com = vol * s * np.array(info.com)
+            self.mass = vol * self.mass
+            self.com = vol * s * np.array(info.com)
             
 
     def insert(self, node):
@@ -248,6 +250,8 @@ def translation(node):
 def rotation(node):
     return np.array(node.getObject('dofs').position[0][3:])
 
+def frame(node):
+    return Frame(node.getObject('dofs').position[0])
 
 # 
 def pos(node):

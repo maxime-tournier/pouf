@@ -39,7 +39,7 @@ class Humanoid:
             i.groups.append( len(self.groups))
 
     # TODO add some parameters yo
-    def __init__(self, name):
+    def __init__(self, name = 'robot'):
 
         self.name = name
 

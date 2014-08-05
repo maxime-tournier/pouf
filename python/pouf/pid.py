@@ -130,7 +130,7 @@ class Implicit:
         self.map.offset = str(self.pos)
         self.map.init()         # TODO is apply triggered ?
 
-        stiff = self.kp + self.ki * dt
+        stiff = self.kp 
         damping = self.kd
         
         self.ff.compliance = 1.0 / stiff
@@ -160,18 +160,28 @@ class Implicit:
     # force applied at the end of time step
     def post_force(self):
         v =  self.dofs.velocity
+        p = self.dofs.position
         
-        elastic =  - self.kp * (self.p + self.dt * v)
+        # elastic =  - self.kp * self.p
+        elastic = self.dofs.force
         damping = - self.kd * v
         explicit = self.get_force()
+
+        res = elastic + damping + explicit
+
+        # print 'check:', elastic, self.dofs.force
         
         # print self.dofs.force, elastic, implicit
-        return elastic + damping + explicit
+        return res
         
     # call this during onEndAnimationStep
     def post_step(self, dt):
         # update integral with error on time step end
         self.integral -= dt * self.dofs.position
+
+        self.p = self.dofs.position
+        self.d = self.dofs.velocity
+
         
 
 

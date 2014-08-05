@@ -14,7 +14,7 @@ def setup(servo, base = 5e2):
         p.kd = 5
         p.ki = 10
 
-    ankle = normal
+    ankle = stiff
     
     kp = {
         ('lphal', 0): ankle,
