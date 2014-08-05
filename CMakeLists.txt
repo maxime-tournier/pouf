@@ -18,7 +18,7 @@ set(HEADER_FILES
 	tool/data.h
 
 	linearsolver/pgs.h
-	linearsolver/qp.h
+#	linearsolver/qp.h
 	
 	adaptive/manager.h
 	
@@ -42,7 +42,7 @@ set(SOURCE_FILES
 	tool/python.cpp
 
 	linearsolver/pgs.cpp
-	linearsolver/qp.cpp
+#	linearsolver/qp.cpp
 
 	adaptive/manager.cpp
 
