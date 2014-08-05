@@ -20,7 +20,7 @@ set(HEADER_FILES
 	linearsolver/pgs.h
 #	linearsolver/qp.h
 	
-	adaptive/manager.h
+#   adaptive/manager.h
 	
 	mapping/RigidMultiMapping.h
 
@@ -44,7 +44,7 @@ set(SOURCE_FILES
 	linearsolver/pgs.cpp
 #	linearsolver/qp.cpp
 
-	adaptive/manager.cpp
+#	adaptive/manager.cpp
 
 	mapping/RigidMultiMapping.cpp
 

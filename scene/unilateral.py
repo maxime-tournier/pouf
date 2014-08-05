@@ -124,8 +124,8 @@ def createScene(node):
     num = node.createObject('pouf.pgs',
                             iterations = 200,
                             precision = 1e-8,
-                            # nlnscg = True,
-                            accel_alt = 4,
+                            nlnscg = True,
+                            # accel_alt = 4,
                             # accel = 4,
                             log = True)
 
