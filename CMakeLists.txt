@@ -48,7 +48,7 @@ set(SOURCE_FILES
 
 	mapping/RigidMultiMapping.cpp
 
-	test/dependency.cpp
+# test/dependency.cpp
 	)
 
 set(README_FILES
