@@ -182,6 +182,8 @@ class Implicit:
         self.p = self.dofs.position
         self.d = self.dofs.velocity
 
+        # save torque
+        self.tau = self.post_force()
         
 
 
