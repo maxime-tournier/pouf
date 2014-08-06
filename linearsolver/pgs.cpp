@@ -204,32 +204,6 @@ void pgs::solve_impl(vec& res,
 	  
 	  real estimate2 = step( lambda, net, sys, constant, error, delta, correct );
 
-	  if( nlnscg.getValue() ) {
-		grad = -lambda + lambda_prev;
-
-		// conjugation
-		if( k > 0 ) {
-			
-		  assert( grad_prev.norm() > std::numeric_limits<real>::epsilon() );
-		  real beta = grad.squaredNorm() / grad_prev.squaredNorm();
-			
-		  if( beta > 1 ) {
-			// restart
-			p.setZero();
-		  } else {
-			// conjugation
-			lambda += beta * p;
-			p = beta * p - grad;
-		  }
-		} else {
-		  // first iteration
-		  p = -grad;
-		}
-		
-		grad_prev = grad;
-	  }
-
-
 	  if( acc && lambda != lambda_prev ) {
 		const unsigned index = k % acc;
 
@@ -252,6 +226,8 @@ void pgs::solve_impl(vec& res,
 		
 		const real alpha = track(lambda, diff);
 		lambda += alpha * diff;
+		std::cout << k << " alpha: " << alpha << std::endl;
+				
 	  }
 
 
@@ -278,10 +254,21 @@ void pgs::solve_impl(vec& res,
 		//   G.col(index_next) = lambda + p;
 		// }
 
-		tmp.noalias() = F.transpose() * F.col(index);
-		K.col(index) = tmp;
-		K.row(index) = tmp.transpose();
+		vec mask = (G.col(index).array() != 0).cast<real>();
 
+		for(unsigned i = 0; i < acc_alt; ++i) {
+		  if( i != index ) {
+			if( (((1 - mask.array()) * G.col(i).array()) != 0).any() ) {
+			  G.col(i).setZero();
+			  F.col(i).setZero();
+			}
+		  }
+		}
+		
+		// tmp.noalias() = F.transpose() * F.col(index);
+		// K.col(index) = tmp;
+		// K.row(index) = tmp.transpose();
+		K = F.transpose() * F;
 		// K = F.transpose() * F;
 
 		// std::cout << K << std::endl;
@@ -289,17 +276,47 @@ void pgs::solve_impl(vec& res,
 		inv.compute( K ); 
 		tmp = inv.solve( vec::Ones(acc_alt) );
 
+		// log( tmp.transpose() );
 		const real lambda_inv = tmp.sum();
 		tmp /= lambda_inv;
 
-		next.noalias() = G * tmp;
-		lambda = next.cwiseMax( vec::Zero(sys.n) );
+		next.noalias() = mask.cwiseProduct( G * tmp );
+		// lambda = next.cwiseMax( vec::Zero(sys.n) );
 
-		// diff = next - lambda;
-		
-		// const real alpha = track(lambda, diff);
-		// lambda += alpha * diff;
+		// lambda = next;
+		diff = next - lambda;
+		const real alpha = track(lambda, diff);
+		lambda += alpha * diff;
 	  }
+
+
+	  if( nlnscg.getValue() ) {
+		grad = -lambda + lambda_prev;
+
+		real grad_prev_norm2 = grad_prev.squaredNorm();
+		// conjugation
+		if( k > 0 && grad_prev_norm2) {
+			
+		  assert( grad_prev.norm() > std::numeric_limits<real>::epsilon() );
+		  real beta = grad.squaredNorm() / grad_prev_norm2;
+			
+		  if( beta > 1 ) {
+			// restart
+			p.setZero();
+		  } else {
+			// conjugation
+			lambda += beta * p;
+			p = beta * p - grad;
+		  }
+		} else {
+		  // first iteration
+		  p = -grad;
+		}
+		
+		grad_prev = grad;
+	  }
+
+
 
 	  
 		

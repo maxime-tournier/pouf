@@ -6,6 +6,8 @@ from tool import concat
 import numpy as np
 import math
 
+import pickle
+
 # TODO get rid of this one
 from Compliant import Tools
 
@@ -92,6 +94,23 @@ class PID:
                 res.append( (j.name, i) )
         return res
 
+
+    # only for gains
+    def save(self, filename, attr = ['kp', 'kd', 'ki', 'kt'] ):
+        data = {}
+        for what in attr:
+            data[what] = self.get(what, self.joints())
+
+        with open(filename, 'w') as f:
+            pickle.dump(data, f)
+            
+    def load(self, filename):
+        with open(filename) as f:
+            data = pickle.load(f)
+
+            for what in data:
+                self.set(what, data[what])
+                
 
 # data.states = ['start', 'foo', 'bar']
 # data.transitions = [('event1', 'start', foo'), ('event2', 'start', bar') ]

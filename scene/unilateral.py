@@ -6,7 +6,10 @@ from pouf import rigid
 from pouf import tool
 from pouf import script
 from pouf.tool import concat
-from pouf import quat
+from pouf import quat, gui
+
+from PySide import QtGui, QtCore
+
 import math
 
 mesh_path = pouf.path() + '/share/mesh'
@@ -34,12 +37,14 @@ class Script:
 
             rho = 1 + random.randrange(1000) / 10
             mass = 4/3 * math.pi * (radius * radius * radius)
-            ball(self.node, [0, 1, 0], mass, radius)
+            ball(self.node, [-0.0, 1, -0.0], mass, radius)
             # box(self.node, [0, 0.6, 0], mass, radius)
             
         self.count += 1
-        return 0
-    
+
+        if not self.gui.plot.isChecked():
+            return 0
+        
         data = {}
         cv = [ x[0] for x in self.qp.convergence if x[0] > 0]
 
@@ -108,6 +113,25 @@ def bowl(pos):
     return b
 
 
+class Gui(pouf.gui.Singleton):
+    def __init__(self, parent = None):
+        pouf.gui.Singleton.__init__(self, parent)
+
+        
+        lay = QtGui.QVBoxLayout()
+        hbox = QtGui.QHBoxLayout()
+        hbox.addWidget(QtGui.QLabel('plot:'))
+        self.plot = QtGui.QCheckBox()
+        hbox.addWidget( self.plot )
+        lay.addLayout(hbox)
+
+        self.setLayout( lay )
+        self.setWindowTitle('config')
+        self.setWindowFlags(QtCore.Qt.WindowStaysOnTopHint)
+        
+
+
+
 def createScene(node):
     scene = pouf.tool.scene( node )
 
@@ -122,11 +146,11 @@ def createScene(node):
 
 
     num = node.createObject('pouf.pgs',
-                            iterations = 200,
+                            iterations = 300,
                             precision = 1e-8,
                             nlnscg = True,
                             # accel_alt = 4,
-                            # accel = 4,
+                            # accel = 2,
                             log = True)
 
     node.createObject('LDLTResponse', regularize = 0)
@@ -136,7 +160,7 @@ def createScene(node):
     ode.stabilization_damping = 1e-3
 
     proximity = node.getObject('proximity')
-    proximity.alarmDistance = 0.005
+    proximity.alarmDistance = 0.0015
     proximity.contactDistance = 0.001
     
     manager = node.getObject('manager')
@@ -145,16 +169,18 @@ def createScene(node):
     manager.responseParams = 'damping=0&compliance=0&restitution=0'
     
     ground = pouf.tool.ground(scene, [0, 1, 0], [0.1, 0.1, 0.1] )
-    
+
     
     # stack(scene, 20)
-
-
+    
     bowl([0, 0.1, 0]).insert(scene)
     
     script = Script()
     script.qp = num
     script.node = node
+
+    script.gui = Gui()
+    script.gui.show()
     
     pouf.script.insert( node, script )
     node.dt = 5e-3
