@@ -94,3 +94,21 @@ def scene(root):
     
     
     return scene 
+
+
+
+import ctypes
+import platform
+
+def dll(name):
+    system = platform.system()
+    
+    extension = '.so'
+
+    if system == 'Windows':
+        extension = '.dll'
+    elif system == 'Darwin':
+        extension = '.dylib'
+
+    prefix = 'lib'
+    return ctypes.CDLL( prefix + name + extension )
