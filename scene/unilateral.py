@@ -37,8 +37,8 @@ class Script:
 
             rho = 1 + random.randrange(1000) / 10
             mass = 4/3 * math.pi * (radius * radius * radius)
-            ball(self.node, [-0.0, 1, -0.0], mass, radius)
-            # box(self.node, [0, 0.6, 0], mass, radius)
+            ball(self.balls, [-0.0, 1, -0.0], mass, radius)
+            # box(self.balls, [0, 0.6, 0], mass, radius)
             
         self.count += 1
 
@@ -148,8 +148,8 @@ def createScene(node):
     num = node.createObject('pouf.pgs',
                             iterations = 300,
                             precision = 1e-8,
-                            nlnscg = True,
-                            # accel_alt = 4,
+                            # nlnscg = True,
+                            accel_alt = 4,
                             # accel = 2,
                             log = True)
 
@@ -170,10 +170,11 @@ def createScene(node):
     
     ground = pouf.tool.ground(scene, [0, 1, 0], [0.1, 0.1, 0.1] )
 
+
     
     # stack(scene, 20)
     
-    bowl([0, 0.1, 0]).insert(scene)
+
     
     script = Script()
     script.qp = num
@@ -181,6 +182,9 @@ def createScene(node):
 
     script.gui = Gui()
     script.gui.show()
-    
     pouf.script.insert( node, script )
+    
+    script.balls = scene.createChild('balls')
+    bowl([0, 0.1, 0]).insert(scene)
+    
     node.dt = 5e-3

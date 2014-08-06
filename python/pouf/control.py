@@ -7,6 +7,7 @@ import numpy as np
 import math
 
 import pickle
+import pprint
 
 # TODO get rid of this one
 from Compliant import Tools
@@ -75,6 +76,9 @@ class PID:
 
             setattr(joint.pid[index], what, value)
 
+            # print 'setting ', what, 'for ', name, index, ' = ', value
+
+
     # 'who' is a set { (name, index) } (or dictionary but only keys
     # are used). returns a dictionary { (name, index): value } giving
     # attribute 'what' from pid 'index' in joint 'name'
@@ -102,11 +106,11 @@ class PID:
             data[what] = self.get(what, self.joints())
 
         with open(filename, 'w') as f:
-            pickle.dump(data, f)
+            pprint.pprint(data, f)
             
     def load(self, filename):
         with open(filename) as f:
-            data = pickle.load(f)
+            data = eval(f.read())
 
             for what in data:
                 self.set(what, data[what])
