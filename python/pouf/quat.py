@@ -43,6 +43,10 @@ def rotate(q, x):
 # exponential (for rotations, not unit quaternions)
 def exp(v):
     theta = math.sqrt( np.dot(v, v) )
+
+    if math.fabs(theta) < 1e-7:
+        return id()
+    
     s = math.sin(theta / 2)
     c = math.cos(theta / 2)
 
