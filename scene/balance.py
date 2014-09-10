@@ -397,8 +397,6 @@ def createScene(node):
     dofs = [j.node.getObject('dofs') for j in robot.joints]
 
 
-    
-
     am = control.Constraint('am-control', node, dofs, 3)
     am.ff.isCompliance = True
 
@@ -411,10 +409,10 @@ def createScene(node):
     gui.am.enabled.setChecked( True )
     gui.com.enabled.setChecked( True )
 
-    c = 1e-4
+    c = 2e-4
     p = {
         'am' : {
-            'compliance': 1e-4,
+            'compliance': c,
             'damping': 1
         },
         'com' : {
