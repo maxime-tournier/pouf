@@ -3,7 +3,9 @@
 #include <sofa/core/ObjectFactory.h>
 #include <Compliant/utils/scoped.h>
 #include <Compliant/utils/edit.h>
+#include <Compliant/utils/schur.h>
 
+#include <tool/lcp.h>
 
 // SOFA_DECL_CLASS(SequentialSolver);
 int pgsClass = sofa::core::RegisterObject("pgs")
@@ -59,7 +61,12 @@ void pgs::factor(const system_type& system) {
   // TODO: temporary :-/
   response->solve(tmp, JP.transpose());
   mapping_response = system.P * tmp;
-	
+
+  // diagonal
+  diagonal.resize(system.J.rows());
+
+  unsigned diag_off = 0;
+  
   // build blocks and factorize
   for(unsigned i = 0; i < n; ++i) {
 	const block& b = blocks[i];
@@ -84,6 +91,9 @@ void pgs::factor(const system_type& system) {
 				
 		view(r, it.col() - int(b.offset)) += it.value();
 	  }
+
+	  diagonal(diag_off) = view(r, r);
+	  ++diag_off;
 	}
 
 	inverse_type inv( view );
@@ -134,6 +144,8 @@ void pgs::solve_impl(vec& res,
 					 const system_type& sys,
 					 const vec& rhs,
 					 bool correct) const {
+  
+
 	assert( response );
 
 	// reset bench if needed
@@ -163,6 +175,42 @@ void pgs::solve_impl(vec& res,
 	
 	// lcp rhs 
 	vec constant = rhs.tail(sys.n) - JP * res.head( sys.m );
+
+	// dumps lcp if needed
+	if(!filename.getValue().empty() ) {
+	  ::schur<response_type> M(sys, *response);
+	
+	  std::string name = filename.getValue();
+	  if( correct ) {
+		name += ".correction";
+	  } else {
+		name += ".dynamics";
+	  }
+	  
+	  tool::write_lcp(name, M, -constant);
+
+	  // tonge stuff
+	  
+	  // mass-splitting prec: we count non-zeros in mapping_response
+	  // rows
+	  vec prec = vec::Zero(sys.m);
+	  
+	  for (int k=0; k< mapping_response.outerSize(); ++k) {
+		for (mat::InnerIterator it(mapping_response,k); it; ++it) {
+		  prec( it.row() ) += 1;
+		}
+	  }
+	  
+	  // prec has the number of non-zero elements in each column of JP
+	  vec d = vec::Zero(sys.n);
+
+	  for(unsigned i = 0; i < sys.n; ++i) {
+		d(i) = JP.row(i).dot(prec.asDiagonal() * mapping_response.col(i) );
+	  }
+
+	  std::ofstream out(name + ".tonge");
+	  tool::write_vec(out, d);
+	}
 	
 	// lcp error
 	vec error = vec::Zero( sys.n );
@@ -178,16 +226,16 @@ void pgs::solve_impl(vec& res,
 	vec primal;
 
 	// nlnscg
-	vec lambda_prev, grad_prev, p, grad, next, diff;
+	vec lambda_prev, grad_prev, p, grad, next, diff, mask;
 
 	// accel
 	dense_matrix G, F, K;
-	vec delta2;
+	vec delta2, u;
 	
 	const unsigned acc = accel.getValue();
 	const unsigned acc_alt = accel_alt.getValue();
 	
-	if( acc || acc_alt) {
+	if( acc ) {
 	  unsigned dim = std::max(acc, acc_alt);
 	  G = dense_matrix::Zero(sys.n, dim);
 	  F = dense_matrix::Zero(sys.n, dim);
@@ -205,90 +253,50 @@ void pgs::solve_impl(vec& res,
 	  real estimate2 = step( lambda, net, sys, constant, error, delta, correct );
 
 	  if( acc && lambda != lambda_prev ) {
-		const unsigned index = k % acc;
+		const unsigned index = k % acc_alt;
+		const unsigned prev = (k + acc_alt - 1) % acc;
 
-		G.col(index) = lambda;
-		F.col(index) = lambda - lambda_prev;
-
-		tmp.noalias() = F.transpose() * F.col(index);
+		bool skip = false;
+		bool changed = 0;
 		
+		// TODO only zero vectors whose mask is not like the last one
+		if( ((lambda.array() == 0) != (G.col(prev).array() == 0)).any() ) {
+		  G.setZero();
+		  F.setZero();
+		  K.setZero();
+		  
+		  skip = true;
+		}
+		
+		G.col(index) = lambda;
+
+		// trick yo
+		F.col(index) = diagonal.cwiseProduct(lambda - lambda_prev);
+		
+		tmp.noalias() = F.transpose() * F.col(index);
 		K.col(index) = tmp;
 		K.row(index) = tmp.transpose();
 
-		inv.compute( K ); 
-		tmp = inv.solve( vec::Ones(acc) );
+		if(!skip ) {
+		  inv.compute( K ); 
+		  tmp = inv.solve( vec::Ones(acc) );
 
-		const real lambda_inv = tmp.sum();
-		tmp /= lambda_inv;
+		  const real lambda_inv = tmp.sum();
+		  tmp /= lambda_inv;
 
-		next.noalias() = G * tmp;
-		diff = next - lambda;
+		  next.noalias() = G * tmp;
+		  diff = next - lambda;
 		
-		const real alpha = track(lambda, diff);
-		lambda += alpha * diff;
-		std::cout << k << " alpha: " << alpha << std::endl;
-				
-	  }
-
-
-	  if( acc_alt && lambda != lambda_prev ) {
-		const unsigned index = k % acc_alt;
-
-		G.col(index) = lambda;
-		F.col(index) = lambda - lambda_prev;
-
-		// const unsigned index_prev = (k + acc_alt - 1) % acc_alt;
-		// const unsigned index_next = (k + 1) % acc_alt;
-		
-		// vec p = F.col(index_prev);
-		// vec r = F.col(index);
-
-		// vec Ap = JP * (mapping_response * p);
-
-		// real pAp = p.dot(Ap);
-		// if( pAp ) { 
-		//   real mu = -r.dot(Ap) / pAp;
-		//   p = r + mu * p;
-
-		//   F.col(index_next) = p;
-		//   G.col(index_next) = lambda + p;
-		// }
-
-		vec mask = (G.col(index).array() != 0).cast<real>();
-
-		for(unsigned i = 0; i < acc_alt; ++i) {
-		  if( i != index ) {
-			if( (((1 - mask.array()) * G.col(i).array()) != 0).any() ) {
-			  G.col(i).setZero();
-			  F.col(i).setZero();
-			}
-		  }
+		  const real alpha = track(lambda, diff);
+		  lambda += alpha * diff;
+		  // std::cout << k << " alpha: " << alpha << std::endl;
 		}
-		
-		// tmp.noalias() = F.transpose() * F.col(index);
-		// K.col(index) = tmp;
-		// K.row(index) = tmp.transpose();
-		K = F.transpose() * F;
-		// K = F.transpose() * F;
-
-		// std::cout << K << std::endl;
-
-		inv.compute( K ); 
-		tmp = inv.solve( vec::Ones(acc_alt) );
-
-		// log( tmp.transpose() );
-		const real lambda_inv = tmp.sum();
-		tmp /= lambda_inv;
-
-		next.noalias() = mask.cwiseProduct( G * tmp );
-		// lambda = next.cwiseMax( vec::Zero(sys.n) );
-
-		// lambda = next;
-		diff = next - lambda;
-		const real alpha = track(lambda, diff);
-		lambda += alpha * diff;
 	  }
 
+
+	
+
+	  
 
 	  if( nlnscg.getValue() ) {
 		grad = -lambda + lambda_prev;
@@ -322,7 +330,8 @@ void pgs::solve_impl(vec& res,
 		
 	  if( this->bench ) this->bench->lcp(sys, constant, *response, lambda);
 
-
+	  net = mapping_response * lambda;
+	  
 	  if( log.getValue() ) {
 		primal = JP * net - constant;
 		real error = lambda.cwiseMin(primal).norm();
@@ -346,10 +355,10 @@ void pgs::solve_impl(vec& res,
 
 pgs::pgs()
   : nlnscg(initData(&nlnscg, false, "nlnscg", "non-smooth non-linear cg")),
-	accel(initData(&accel, unsigned(0), "accel", "anderson acceleration")),
-	accel_alt(initData(&accel_alt, unsigned(0), "accel_alt", "custom anderson acceleration")),
+	accel(initData(&accel, unsigned(0), "anderson", "anderson acceleration")),
 	log(initData(&log, false, "log", "log convergence history")),
-	convergence(initData(&convergence, "convergence", "convergence history (read-only)"))
+	convergence(initData(&convergence, "convergence", "convergence history (read-only)")),
+	filename(initData(&filename, "filename", "dump lcp data to filename"))
 {
 
 }

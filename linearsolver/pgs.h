@@ -39,9 +39,12 @@ protected:
   vec inverse_storage;
   std::vector<unsigned> offsets;
 
+  vec diagonal;
+
   sofa::Data<bool> log;
   mutable sofa::Data<sofa::vector<real> > convergence;
-  
+
+  sofa::Data<std::string> filename;
 
 };
 

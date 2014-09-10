@@ -197,12 +197,12 @@ class State( pouf.control.FSM ):
             
             current = am + np.cross(s, m * dcom)
 
-            v = am / m
-            error = norm(self.am.matrix.dot(u) - v) / norm(v)
+            v = am
+            error = norm(self.H.dot(u) - v) / norm(v)
             print 'am broyden prediction error:', error
             
             # broyden updates
-            pouf.control.broyden(self.H, u, am);
+            pouf.control.broyden(self.H, u, v);
 
             v = m * dcom
             if self.prev_com != None:
@@ -222,7 +222,7 @@ class State( pouf.control.FSM ):
             self.am.value *= factor
 
             # levmar
-            diag = np.diagonal(self.am.matrix.dot(self.am.matrix.transpose()))
+            # diag = np.diagonal(self.am.matrix.dot(self.am.matrix.transpose()))
             # self.am.compliance = ( diag * self.gui.am.compliance.value() )        
 
             print 'am compliance', self.am.compliance
@@ -372,8 +372,9 @@ def createScene(node):
     scene = pouf.tool.scene( node )
 
     num = node.createObject('pouf.pgs',
-                            iterations = 75,
-                            precision = 0,
+                            nlnscg = True,
+                            iterations = 50,
+                            precision = 1e-8,
                             omega = 1 )
 
     ode = node.getObject('ode')
@@ -394,7 +395,10 @@ def createScene(node):
 
     # dofs basis
     dofs = [j.node.getObject('dofs') for j in robot.joints]
+
+
     
+
     am = control.Constraint('am-control', node, dofs, 3)
     am.ff.isCompliance = True
 
