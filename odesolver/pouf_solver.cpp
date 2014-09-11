@@ -2,7 +2,7 @@
 
 
 // this is for propagate_visitor
-#include <odesolver/AssembledSolver.h>
+// #include <odesolver/AssembledSolver.h>
 
 #include <sofa/component/linearsolver/EigenSparseMatrix.h>
 #include <sofa/component/linearsolver/EigenVector.h>

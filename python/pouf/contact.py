@@ -72,8 +72,7 @@ def draw(active, polygon, com, scale = 1.5e-3 ):
 
     # contact forces
     gl.color([1, 1, 0])
-    for i in range(len(active)):
-        (p, f) = active[i]
+    for (p, f) in active:
         gl.line( p, p + scale * f )
 
     # a contact point on the ground

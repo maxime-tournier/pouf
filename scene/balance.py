@@ -223,10 +223,11 @@ class State( pouf.control.FSM ):
 
             # levmar
             # diag = np.diagonal(self.am.matrix.dot(self.am.matrix.transpose()))
-            # self.am.compliance = ( diag * self.gui.am.compliance.value() )        
-
-            print 'am compliance', self.am.compliance
+            # self.am.compliance = self.gui.am.compliance.value() / diag
+            
             # self.am.compliance = self.gui.am.compliance.value() * error;
+
+
             self.am.update()
 
             self.prev_com = com
@@ -272,8 +273,8 @@ class State( pouf.control.FSM ):
             # levmar stuff
             # TODO this should be K Minv K^T diagonal
             
-            diag = np.diagonal(self.K.dot(self.K.transpose()))
-            # self.com.compliance = (diag * self.gui.com.compliance.value())
+            # diag = np.diagonal(self.K.dot(self.K.transpose()))
+            # self.com.compliance = self.gui.com.compliance.value()) / diag
             
             # print 'com compliance', self.com.compliance
             # print self.com.damping
@@ -379,8 +380,8 @@ def createScene(node):
 
     ode = node.getObject('ode')
     
-    ode.stabilization = False
-    ode.warm_start = False
+    ode.stabilization = True
+    ode.warm_start = True
     ode.debug = 0
 
     # ground
@@ -398,7 +399,7 @@ def createScene(node):
 
 
     am = control.Constraint('am-control', node, dofs, 3)
-    am.ff.isCompliance = True
+    am.ff.isCompliance = False
 
     com = control.Constraint('com-feet-proj-control', node, dofs, 2)
     com.ff.isCompliance = False
@@ -412,8 +413,8 @@ def createScene(node):
     c = 2e-4
     p = {
         'am' : {
-            'compliance': c,
-            'damping': 1
+            'compliance': 2 * c,
+            'damping': 0
         },
         'com' : {
             'compliance': c ,
