@@ -77,8 +77,11 @@ struct assembly_visitor {
 		for(unsigned j = 0, m = node->forceField.size(); j < m; ++j ) {
 			core::behavior::BaseForceField* ffield = node->forceField[j];
 
+			// TODO optimize conversion for symmetric matrices ?
 			if( ffield->isCompliance.getValue() ) {
-				result.C.push_back(convert<rmat>(ffield->getComplianceMatrix(&mparams_compliance)));
+			  // TODO it's not cool to store C as a triangularView
+			  // cause it makes gauss-seidel more difficult
+			  result.C.push_back(convert<rmat>(ffield->getComplianceMatrix(&mparams_compliance)));
 			}
 		}
 
@@ -130,13 +133,15 @@ struct assembly_visitor {
 			component::linearsolver::SingleMatrixAccessor accessor( &sqmat );
 
 			// for compliance you need to add M, B but not K
+
+			// TODO fill only upper part !
 			ffield->addMBKToMatrix( ffield->isCompliance.getValue() ?
 									&mparams_compliance : &mparams_stiffness,
 									&accessor );
 		}
 		
 		sqmat.compress();
-		result.H.push_back( sqmat.compressedMatrix.selfadjointView<Eigen::Upper>() );
+		result.H.push_back( sqmat.compressedMatrix.triangularView<Eigen::Upper>() );
 	}
 
 	
@@ -262,15 +267,17 @@ sofa::component::linearsolver::AssembledSystem assemble(const mapping_graph& gra
 
 	sys.dt = params.dt();
 	
-	// everyone
+	// everyone TODO parallel
 	{
 	  scoped::timer step("response pull");
 	  for(unsigned i = 0, n = boost::num_vertices(graph); i < n; ++i) {
 
         // response block
 		if( result.H[i].nonZeros() ) {
-		  sys.H += (result.J[i].transpose() * result.H[i] * result.J[i])
-			.selfadjointView<Eigen::Upper>();
+		  sys.H += (result.J[i].transpose() * result.H[i].selfadjointView<Eigen::Upper>() * result.J[i]).transpose().triangularView<Eigen::Upper>();
+		  
+		  // sys.H += (result.J[i].transpose() * result.H[i] * result.J[i])
+		  // 	.selfadjointView<Eigen::Upper>();
 		}
 		
 	  }

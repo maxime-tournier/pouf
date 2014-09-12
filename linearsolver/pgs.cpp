@@ -75,12 +75,12 @@ void pgs::factor(const system_type& system) {
 	view_type view(inverse_storage.data() + offsets[i], b.size, b.size);
 
 	// temporary sparse mat, difficult to remove :-/
-	const cmat tmp = JP.middleRows(b.offset, b.size) * 
-	  mapping_response.middleCols(b.offset, b.size);
-		
+	const cmat tmp = (JP.middleRows(b.offset, b.size) * 
+					  mapping_response.middleCols(b.offset, b.size)).triangularView<Eigen::Upper>();
+	
 	// fill constraint block
-	view = tmp;
-		
+	view = tmp.triangularView<Eigen::Upper>();
+	
 	// add diagonal C block
 	for( unsigned r = 0; r < b.size; ++r) {
 	  for(system_type::mat::InnerIterator it(system.C, b.offset + r); it; ++it) {
@@ -88,7 +88,7 @@ void pgs::factor(const system_type& system) {
 		// paranoia, i has it
 		assert( it.col() >= int(b.offset) );
 		assert( it.col() < int(b.offset + b.size) );
-				
+		
 		view(r, it.col() - int(b.offset)) += it.value();
 	  }
 
@@ -96,7 +96,7 @@ void pgs::factor(const system_type& system) {
 	  ++diag_off;
 	}
 
-	inverse_type inv( view );
+	inverse_type inv( view.selfadjointView<Eigen::Upper>() );
 	view = inv.solve( dense_matrix::Identity( b.size, b.size ) );
 	
   }
@@ -133,8 +133,8 @@ void pgs::solve_block(chunk_type result, const inverse_type& inv, chunk_type rhs
   // i smell hack
   const unsigned i = &inv - &blocks_inv.front();
 
-  result.noalias() = const_view_type( inverse_storage.data() + offsets[i],
-									  rhs.size(), rhs.size() ) * rhs;
+  result.noalias() = const_view_type(inverse_storage.data() + offsets[i],
+									 rhs.size(), rhs.size()).selfadjointView<Eigen::Upper>() * rhs;
 
 }
 
@@ -143,7 +143,8 @@ void pgs::solve_block(chunk_type result, const inverse_type& inv, chunk_type rhs
 void pgs::solve_impl(vec& res,
 					 const system_type& sys,
 					 const vec& rhs,
-					 bool correct) const {
+					 bool correct,
+					 real damping) const {
   
 
 	assert( response );
@@ -223,10 +224,16 @@ void pgs::solve_impl(vec& res,
 
 	// outer loop
 	unsigned k = 0, max = iterations.getValue();
+
+	// BECAUSE I SAY SO
+	if( correct ) max /= 2;
+	
 	vec primal;
 
 	// nlnscg
 	vec lambda_prev, grad_prev, p, grad, next, diff, mask;
+	vec net_prev, Ng, Np;
+	real grad_norm2 = 0;
 
 	// accel
 	dense_matrix G, F, K;
@@ -249,6 +256,7 @@ void pgs::solve_impl(vec& res,
 	for(k = 0; k < max; ++k) {
 
 	  lambda_prev = lambda;
+	  net_prev = net;
 	  
 	  real estimate2 = step( lambda, net, sys, constant, error, delta, correct );
 
@@ -278,7 +286,7 @@ void pgs::solve_impl(vec& res,
 		K.row(index) = tmp.transpose();
 
 		if(!skip ) {
-		  inv.compute( K ); 
+		  inv.compute( K.selfadjointView<Eigen::Upper>() ); 
 		  tmp = inv.solve( vec::Ones(acc) );
 
 		  const real lambda_inv = tmp.sum();
@@ -289,6 +297,8 @@ void pgs::solve_impl(vec& res,
 		
 		  const real alpha = track(lambda, diff);
 		  lambda += alpha * diff;
+
+		  net = mapping_response * lambda;
 		  // std::cout << k << " alpha: " << alpha << std::endl;
 		}
 	  }
@@ -299,46 +309,55 @@ void pgs::solve_impl(vec& res,
 	  
 
 	  if( nlnscg.getValue() ) {
-		grad = -lambda + lambda_prev;
 
-		real grad_prev_norm2 = grad_prev.squaredNorm();
+		const real grad_norm2_prev = grad_norm2;
+		
+		grad = -lambda + lambda_prev;
+		Ng = -net + net_prev;
+		
+		grad_norm2 = grad.squaredNorm();
+
 		// conjugation
-		if( k > 0 && grad_prev_norm2) {
+		if( k > 0 && grad_norm2_prev) {
 			
-		  assert( grad_prev.norm() > std::numeric_limits<real>::epsilon() );
-		  real beta = grad.squaredNorm() / grad_prev_norm2;
-			
+		  assert( grad_norm2_prev > std::numeric_limits<real>::epsilon() );
+		  const real beta = grad_norm2 / grad_norm2_prev;
+		  
 		  if( beta > 1 ) {
 			// restart
 			p.setZero();
+			Np.setZero();
+			
 		  } else {
 			// conjugation
 			lambda += beta * p;
+			net += beta * Np;
+
+			// net = mapping_response * lambda;
+
 			p = beta * p - grad;
+			Np = beta * Np - Ng;
 		  }
 		} else {
 		  // first iteration
 		  p = -grad;
+		  Np = -Ng;
 		}
 		
 		grad_prev = grad;
 	  }
 
-
-
 	  
 		
 	  if( this->bench ) this->bench->lcp(sys, constant, *response, lambda);
 
-	  net = mapping_response * lambda;
-	  
 	  if( log.getValue() ) {
 		primal = JP * net - constant;
 		real error = lambda.cwiseMin(primal).norm();
 		edit(convergence)->push_back(error);
 		if( error <= epsilon ) break;
 	  } else { 
-	  // stop if we only gain one significant digit after precision
+		// stop if we only gain one significant digit after precision
 		if( std::sqrt(estimate2) / sys.n <= epsilon ) break;
 	  }
 	}
@@ -361,6 +380,20 @@ pgs::pgs()
 	filename(initData(&filename, "filename", "dump lcp data to filename"))
 {
 
+}
+
+void pgs::solve(vec& res,
+				const system_type& sys,
+				const vec& rhs) const {
+  solve_impl(res, sys, rhs, false );
+}
+
+
+void pgs::correct(vec& res,
+				  const system_type& sys,
+				  const vec& rhs,
+				  real damping ) const {
+  solve_impl(res, sys, rhs, true, damping );
 }
 
 

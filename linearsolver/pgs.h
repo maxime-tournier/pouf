@@ -14,7 +14,17 @@ public:
   virtual void factor(const system_type& system);
 
   pgs();
+
+
+  void solve(vec& res,
+			 const system_type& sys,
+			 const vec& rhs) const;
   
+  void correct(vec& res,
+			   const system_type& sys,
+			   const vec& rhs,
+			   real damping ) const;
+
 protected:
 
   virtual void solve_block(chunk_type result,
@@ -33,7 +43,8 @@ protected:
   void solve_impl(vec& x,
 				  const system_type& system,
 				  const vec& rhs,
-				  bool correct) const;
+				  bool correct,
+				  real damping = 0) const;
   
   // contiguous data for inverses
   vec inverse_storage;
