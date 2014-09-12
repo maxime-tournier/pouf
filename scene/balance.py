@@ -182,7 +182,7 @@ class State( pouf.control.FSM ):
             cop = self.cop_ground(com, m * g, f, centroid[1])
             cop = pouf.contact.project(self.balance.hull(), cop )
 
-            cop = mid
+            # cop = mid
             cop[1] = centroid[1]
 
             # cop = com_target
@@ -211,10 +211,12 @@ class State( pouf.control.FSM ):
             
             self.am.matrix = (self.H + pouf.tool.hat(s).dot(self.L))
             # self.am.matrix = self.H
+
+            # AM change at desired cop should be due to gravity forces only
+            value = (current + dt * np.cross(s, m * g))
             
-            value = (current + dt * np.cross(s, m * g)) / m
-            
-            value = np.zeros(3)
+            # value = np.zeros(3)
+
             self.am.value = dt * value
 
             factor = 1 / m
@@ -374,7 +376,7 @@ def createScene(node):
 
     num = node.createObject('pouf.pgs',
                             nlnscg = True,
-                            iterations = 50,
+                            iterations = 30,
                             precision = 1e-8,
                             omega = 1 )
 
