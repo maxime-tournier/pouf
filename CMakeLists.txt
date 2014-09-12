@@ -24,6 +24,9 @@ set(HEADER_FILES
 	
 	mapping/RigidMultiMapping.h
 
+	thread/worker.h
+	thread/pool.h
+	
 	)
 
 set(SOURCE_FILES
@@ -47,6 +50,7 @@ set(SOURCE_FILES
 #	adaptive/manager.cpp
 
 	mapping/RigidMultiMapping.cpp
+	thread/worker.cpp
 
 # test/dependency.cpp
 	)
