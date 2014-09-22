@@ -18,6 +18,7 @@ set(HEADER_FILES
 	tool/data.h
 
 	linearsolver/pgs.h
+	linearsolver/jacobi.h
 #	linearsolver/qp.h
 	
 #   adaptive/manager.h
@@ -26,6 +27,9 @@ set(HEADER_FILES
 
 	thread/worker.h
 	thread/pool.h
+
+	math/anderson.h
+	math/nlnscg.h
 	
 	)
 
@@ -45,12 +49,17 @@ set(SOURCE_FILES
 	tool/python.cpp
 
 	linearsolver/pgs.cpp
+	linearsolver/jacobi.cpp
+	
 #	linearsolver/qp.cpp
 
 #	adaptive/manager.cpp
 
 	mapping/RigidMultiMapping.cpp
 	thread/worker.cpp
+
+	math/anderson.cpp
+	math/nlnscg.cpp
 
 # test/dependency.cpp
 	)
@@ -66,6 +75,6 @@ AddLinkerDependencies(SofaGuiQt Compliant)
 
 include(${SOFA_CMAKE_DIR}/postProject.cmake)
 
-# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0 -g")
-# remove_definitions(-DNDEBUG )
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0 -g")
+remove_definitions(-DNDEBUG )
 

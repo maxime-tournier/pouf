@@ -186,7 +186,7 @@ class State( pouf.control.FSM ):
             cop[1] = centroid[1]
 
             # cop = com_target
-            # cop = centroid
+            cop = centroid
             
             self.target_cop = cop[:]
             self.target_com = com_target
@@ -374,15 +374,19 @@ def createScene(node):
     
     scene = pouf.tool.scene( node )
 
-    num = node.createObject('pouf.pgs',
+    num = node.createObject('pouf.jacobi',
                             nlnscg = True,
-                            iterations = 30,
-                            precision = 1e-8,
+                            # anderson = 4,
+                            iterations = 150,
+                            threads = 2,
+                            precision = 0,
                             omega = 1 )
 
     ode = node.getObject('ode')
     
     ode.stabilization = True
+    ode.stabilization_damping = 1e-3
+    
     ode.warm_start = True
     ode.debug = 0
 
@@ -401,10 +405,10 @@ def createScene(node):
 
 
     am = control.Constraint('am-control', node, dofs, 3)
-    am.ff.isCompliance = False
+    am.ff.isCompliance = True # False
 
     com = control.Constraint('com-feet-proj-control', node, dofs, 2)
-    com.ff.isCompliance = False
+    com.ff.isCompliance = True # False
     
     gui = Gui(robot.inner_dofs)
     gui.show()
@@ -415,7 +419,7 @@ def createScene(node):
     c = 2e-4
     p = {
         'am' : {
-            'compliance': 2 * c,
+            'compliance': 4e-4,
             'damping': 0
         },
         'com' : {

@@ -14,15 +14,13 @@ def draw( data, figure = None, log = None ):
     if log:
         plt.yscale('log')
     plt.legend()
-    
+
+    plt.ion()
     plt.draw()
-
-
 
 
 plt.ion()
 plt.show()
-
 
 
 import socket

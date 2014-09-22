@@ -161,32 +161,36 @@ struct assembly_visitor {
 
 		mapping_graph::out_edge_range out_edges = boost::out_edges(vertex, graph);
 
-		// independent dofs
-		if( out_edges.first == out_edges.second ) {
+		{
+		  // scoped::timer step("concat");
+
+		  // independent dofs
+		  if( out_edges.first == out_edges.second ) {
 			J = shift_right<rmat>(off_master, dim, state.master.dim);
 			off_master += dim;
-		} else {
+		  } else {
 
 			for(mapping_graph::out_edge_iterator e = out_edges.first;
 				e != out_edges.second; ++e) {
 				
-				// mapping concatenation
-				{
-					const rmat& parent = result.J[ boost::target(*e, graph) ];
+			  // mapping concatenation
+			  {
+				const rmat& parent = result.J[ boost::target(*e, graph) ];
 					
-					// J += block * parent
-					peq_mult(J, graph[*e].j_block(), parent);
-				}
+				// J += block * parent
+				peq_mult(J, graph[*e].j_block(), parent);
+			  }
 
-				// geometric stiffness
-				if( graph[*e].ks ) {
-					rmat& parent = result.H[ boost::target(*e, graph) ];
+			  // geometric stiffness
+			  if( graph[*e].ks ) {
+				rmat& parent = result.H[ boost::target(*e, graph) ];
 					
-					// TODO optimize
-					peq_mult(parent, mparams_stiffness.kFactor(), graph[*e].k_block() );
-				}
+				// TODO optimize
+				peq_mult(parent, mparams_stiffness.kFactor(), graph[*e].k_block() );
+			  }
 			}
 
+		  }
 		}
 		
 	}
@@ -261,26 +265,43 @@ sofa::component::linearsolver::AssembledSystem assemble(const mapping_graph& gra
 	  graph.top_down( assembly_visitor(result, state, params) );
 	}
 	
-	using namespace sofa;
-	component::linearsolver::AssembledSystem sys(state.master.dim,
-												 state.compliant.dim);
-
+	using namespace sofa::component::linearsolver;
+	AssembledSystem sys(state.master.dim,
+						state.compliant.dim);
+	
 	sys.dt = params.dt();
 	
-	// everyone TODO parallel
+	// everyone
+	// TODO parallel ?
+	// TODO use triplets instead ?
 	{
 	  scoped::timer step("response pull");
+	  
+	  typedef Eigen::Triplet<AssembledSystem::real> T;
+	  std::vector<T> triplets;
+
+	  AssembledSystem::cmat tmp;
+	  
 	  for(unsigned i = 0, n = boost::num_vertices(graph); i < n; ++i) {
 
         // response block
 		if( result.H[i].nonZeros() ) {
-		  sys.H += (result.J[i].transpose() * result.H[i].selfadjointView<Eigen::Upper>() * result.J[i]).transpose().triangularView<Eigen::Upper>();
+		  tmp = (result.J[i].transpose() * result.H[i].selfadjointView<Eigen::Upper>() * result.J[i])
+			.triangularView<Eigen::Upper>();
+		  
+		  for (int k = 0; k < tmp.outerSize(); ++k) {
+			for (AssembledSystem::cmat::InnerIterator it(tmp, k); it; ++it) {
+			  triplets.push_back(T(it.row(), it.col(), it.value()));
+			}
+		  }
 		  
 		  // sys.H += (result.J[i].transpose() * result.H[i] * result.J[i])
 		  // 	.selfadjointView<Eigen::Upper>();
 		}
 		
 	  }
+	  
+	  sys.H.setFromTriplets(triplets.begin(), triplets.end());
 	}
 	
 	// master dofs
@@ -293,7 +314,7 @@ sofa::component::linearsolver::AssembledSystem assemble(const mapping_graph& gra
 		const unsigned dim = graph[ vertex ].mstate->getMatrixSize();
 		
 		// projection block
-		sys.P.middleRows(offset, dim) = shifted_matrix(result.P[i], offset, dim);
+		sys.P.middleRows(offset, dim) = sofa::shifted_matrix(result.P[i], offset, dim);
 		offset += dim;
 	}
 	
@@ -310,10 +331,10 @@ sofa::component::linearsolver::AssembledSystem assemble(const mapping_graph& gra
 		sys.J.middleRows(offset, dim) = result.J[ vertex ];
 
 		// compliance block
-		sys.C.middleRows(offset, dim) = shifted_matrix(result.C[i],
-													   offset,
-													   dim,
-													   -1.0 / params.kFactor() );
+		sys.C.middleRows(offset, dim) = sofa::shifted_matrix(result.C[i],
+															 offset,
+															 dim,
+															 -1.0 / params.kFactor() );
 		offset += dim;
 	}
 	

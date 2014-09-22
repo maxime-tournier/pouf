@@ -17,22 +17,35 @@ namespace thread {
 	
 	std::vector< std::unique_ptr<thread::worker> > worker;
 
+	unsigned size() const { return 1 + worker.size(); }
+	
+	struct chunk {
+	  int start, end;
+	  unsigned id;
+	};
+	
 	// note: the calling thread will also work
-	template<class Int, class F>
-	void parallel_for(Int start, Int end, const F& f) const {
+	template<class F>
+	void parallel_for(int start, int end, const F& f) const {
 
 	  std::atomic<unsigned> ok(0);
 	  
-	  const unsigned n = worker.size() + 1;
+	  const unsigned n = size();
 	  
 	  auto make_task = [&](unsigned i) {
-		const Int delta = end - start;
+		const int delta = end - start;
 
-		const Int s = start + (delta * i) / n;
-		const Int e = start + (delta * (i + 1)) / n;
+		const int s = start + (delta * i) / n;
+		const int e = start + (delta * (i + 1)) / n;
+
+		chunk c;
+
+		c.start = s;
+		c.end = e;
+		c.id = i;
 		
-		return [s, e, &ok, &f] {
-		  f(s, e);
+		return [c, &ok, &f] {
+		  f(c);
 		  ++ok;
 		};
 	  };

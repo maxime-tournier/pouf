@@ -37,7 +37,8 @@ class Script:
 
             rho = 1 + random.randrange(1000) / 10
             mass = 4/3 * math.pi * (radius * radius * radius)
-            ball(self.balls, [-0.0, 1, -0.0], mass, radius)
+            height = 0.7
+            ball(self.balls, [-0.0, height, -0.0], mass, radius)
             # box(self.balls, [0, 0.6, 0], mass, radius)
             
         self.count += 1
@@ -145,13 +146,14 @@ def createScene(node):
     #                         filename = '/tmp/lcp')
 
 
-    num = node.createObject('pouf.pgs',
-                            iterations = 300,
+    num = node.createObject('pouf.jacobi',
+                            iterations = 50,
                             precision = 1e-8,
                             # nlnscg = True,
                             accel_alt = 4,
-                            # accel = 2,
-                            log = True)
+                            # accel = 4,
+                            #log = True
+    )
 
     node.createObject('LDLTResponse', regularize = 0)
     
@@ -160,7 +162,7 @@ def createScene(node):
     ode.stabilization_damping = 1e-3
 
     proximity = node.getObject('proximity')
-    proximity.alarmDistance = 0.0015
+    proximity.alarmDistance = 0.0012
     proximity.contactDistance = 0.001
     
     manager = node.getObject('manager')

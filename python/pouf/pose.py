@@ -17,8 +17,8 @@ def setup(servo, base = 5e2):
     ankle = stiff
     
     kp = {
-        ('lphal', 0): ankle,
-        ('rphal', 0): ankle,
+        ('lphal', 0): normal,
+        ('rphal', 0): normal,
         
         ('lankle', 0): ankle,
         ('lankle', 1): ankle,

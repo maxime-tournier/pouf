@@ -4,13 +4,59 @@
 #include <Compliant/utils/scoped.h>
 #include <Compliant/utils/edit.h>
 #include <Compliant/utils/schur.h>
+#include <Compliant/utils/nan.h>
 
 #include <tool/lcp.h>
+
+#include <thread/pool.h>
 
 // SOFA_DECL_CLASS(SequentialSolver);
 int pgsClass = sofa::core::RegisterObject("pgs")
   .add< pgs >()
   .addAlias("pouf.pgs");
+
+
+static thread::pool pool(2);
+
+
+static void response_solve(const sofa::component::linearsolver::Response& response,
+						   sofa::component::linearsolver::AssembledSystem::cmat& res,
+						   const sofa::component::linearsolver::AssembledSystem::rmat& rhs) {
+  scoped::timer timer("response computation");
+  
+  using namespace sofa::component::linearsolver;
+  std::vector<AssembledSystem::cmat> chunk(pool.size());
+
+  std::mutex mutex;
+  
+  auto task = [&](const thread::pool::chunk& c) {
+	chunk[c.id].resize(rhs.rows(), c.end - c.start);
+	
+	AssembledSystem::cmat tmp(res.rows(), 1);
+	
+	for(unsigned i = c.start; i < c.end; ++i) {
+	  tmp.setZero();
+	  response.solve(tmp, rhs.middleRows(i, 1).transpose());
+	  chunk[c.id].middleCols(i - c.start, 1) = tmp;
+	}	
+	
+  };
+
+  pool.parallel_for(0, rhs.rows(), task);
+
+  unsigned off = 0;
+  for(unsigned i = 0, n = pool.size(); i < n; ++i) {
+	unsigned dim = chunk[i].cols();
+
+	if(dim) {
+	  res.middleCols(off, dim) = chunk[i];
+	}
+
+	off += dim;
+
+  }
+}
+
 
 void pgs::factor(const system_type& system) { 
   scoped::timer timer("system factorization");
@@ -57,48 +103,54 @@ void pgs::factor(const system_type& system) {
   JP = system.J * system.P;
   cmat tmp; tmp.resize( mapping_response.rows(),
 						mapping_response.cols());
-	
-  // TODO: temporary :-/
-  response->solve(tmp, JP.transpose());
+
+  response_solve(*response, tmp, JP);
   mapping_response = system.P * tmp;
 
   // diagonal
   diagonal.resize(system.J.rows());
 
-  unsigned diag_off = 0;
-  
   // build blocks and factorize
-  for(unsigned i = 0; i < n; ++i) {
-	const block& b = blocks[i];
+  auto task = [&](const thread::pool::chunk& c) {
+	for(unsigned i = c.start; i < c.end; ++i) {
+	  const block& b = blocks[i];
 
-	// virew on inverse chunk data
-	view_type view(inverse_storage.data() + offsets[i], b.size, b.size);
+	  // virew on inverse chunk data
+	  view_type view(inverse_storage.data() + offsets[i], b.size, b.size);
 
-	// temporary sparse mat, difficult to remove :-/
-	const cmat tmp = (JP.middleRows(b.offset, b.size) * 
-					  mapping_response.middleCols(b.offset, b.size)).triangularView<Eigen::Upper>();
+	  // temporary sparse mat, difficult to remove :-/
+	  const cmat tmp = (JP.middleRows(b.offset, b.size) * 
+						mapping_response.middleCols(b.offset, b.size)).triangularView<Eigen::Upper>();
 	
-	// fill constraint block
-	view = tmp.triangularView<Eigen::Upper>();
-	
-	// add diagonal C block
-	for( unsigned r = 0; r < b.size; ++r) {
-	  for(system_type::mat::InnerIterator it(system.C, b.offset + r); it; ++it) {
+	  // fill constraint block
+	  view = tmp.triangularView<Eigen::Upper>();
+
+	  unsigned diag_off = b.offset;
+	  
+	  // add diagonal C block
+	  for( unsigned r = 0; r < b.size; ++r) {
+		for(system_type::mat::InnerIterator it(system.C, b.offset + r); it; ++it) {
 				
-		// paranoia, i has it
-		assert( it.col() >= int(b.offset) );
-		assert( it.col() < int(b.offset + b.size) );
+		  // paranoia, i has it
+		  assert( it.col() >= int(b.offset) );
+		  assert( it.col() < int(b.offset + b.size) );
 		
-		view(r, it.col() - int(b.offset)) += it.value();
+		  view(r, it.col() - int(b.offset)) += it.value();
+		}
+
+		diagonal(diag_off) = view(r, r);
+		++diag_off;
 	  }
 
-	  diagonal(diag_off) = view(r, r);
-	  ++diag_off;
-	}
-
-	inverse_type inv( view.selfadjointView<Eigen::Upper>() );
-	view = inv.solve( dense_matrix::Identity( b.size, b.size ) );
-	
+	  inverse_type inv( view.selfadjointView<Eigen::Upper>() );
+	  view = inv.solve( dense_matrix::Identity( b.size, b.size ) );
+	}	
+  };
+  
+  {
+	scoped::timer timer("building blocks");
+	// task(0, n);
+	pool.parallel_for(0, n, task);
   }
 
 }
@@ -197,7 +249,7 @@ void pgs::solve_impl(vec& res,
 	  vec prec = vec::Zero(sys.m);
 	  
 	  for (int k=0; k< mapping_response.outerSize(); ++k) {
-		for (mat::InnerIterator it(mapping_response,k); it; ++it) {
+		for (cmat::InnerIterator it(mapping_response,k); it; ++it) {
 		  prec( it.row() ) += 1;
 		}
 	  }
@@ -231,22 +283,23 @@ void pgs::solve_impl(vec& res,
 	vec primal;
 
 	// nlnscg
-	vec lambda_prev, grad_prev, p, grad, next, diff, mask;
+	vec lambda_prev, grad_prev, p, grad;
 	vec net_prev, Ng, Np;
 	real grad_norm2 = 0;
 
 	// accel
-	dense_matrix G, F, K;
-	vec delta2, u;
+	dense_matrix G, F, K, NG;
+	vec delta2, u, diff, mask, next;
 	
 	const unsigned acc = accel.getValue();
-	const unsigned acc_alt = accel_alt.getValue();
 	
 	if( acc ) {
-	  unsigned dim = std::max(acc, acc_alt);
+	  unsigned dim = acc;
 	  G = dense_matrix::Zero(sys.n, dim);
 	  F = dense_matrix::Zero(sys.n, dim);
 	  K = dense_matrix::Zero(dim, dim);
+	  NG = dense_matrix::Zero(sys.m, dim);
+	  tmp = vec::Zero( dim );
 	}
 
 	inverse_type inv;
@@ -260,46 +313,73 @@ void pgs::solve_impl(vec& res,
 	  
 	  real estimate2 = step( lambda, net, sys, constant, error, delta, correct );
 
-	  if( acc && lambda != lambda_prev ) {
-		const unsigned index = k % acc_alt;
-		const unsigned prev = (k + acc_alt - 1) % acc;
+	  if( acc ) {
+		const unsigned index = k % acc;
 
-		bool skip = false;
-		bool changed = 0;
+		if( lambda != lambda_prev ) {
+		  const unsigned prev = (k + acc - 1) % acc;
+
+		  bool skip = false;
+		  bool changed = 0;
 		
-		// TODO only zero vectors whose mask is not like the last one
-		if( ((lambda.array() == 0) != (G.col(prev).array() == 0)).any() ) {
-		  G.setZero();
-		  F.setZero();
-		  K.setZero();
-		  
-		  skip = true;
-		}
+		  // TODO only zero vectors whose mask is not like the last one
+		  if( ((lambda.array() == 0) != (G.col(prev).array() == 0)).any() ) {
+			// G.setZero();
+			// F.setZero();
+			// K.setZero();
+			// NG.setZero();
+			
+			skip = true;
+		  }
 		
-		G.col(index) = lambda;
+		  G.col(index) = lambda;
+		  NG.col(index) = net;
 
-		// trick yo
-		F.col(index) = diagonal.cwiseProduct(lambda - lambda_prev);
+		  // trick yo
+		  F.col(index) = diagonal.cwiseProduct(lambda - lambda_prev);
 		
-		tmp.noalias() = F.transpose() * F.col(index);
-		K.col(index) = tmp;
-		K.row(index) = tmp.transpose();
+		  tmp.noalias() = F.transpose() * F.col(index);
+		  K.col(index) = tmp;
+		  K.row(index) = tmp.transpose();
 
-		if(!skip ) {
-		  inv.compute( K.selfadjointView<Eigen::Upper>() ); 
-		  tmp = inv.solve( vec::Ones(acc) );
+		  // just in case
+		  K(index, index) += 1e-14;
 
-		  const real lambda_inv = tmp.sum();
-		  tmp /= lambda_inv;
+		  if(!skip ) {
+			inv.compute( K.selfadjointView<Eigen::Upper>() );
 
-		  next.noalias() = G * tmp;
-		  diff = next - lambda;
+			if( inv.info() == Eigen::Success ) {
+			  tmp.noalias() = inv.solve( vec::Ones(acc) );
+
+			  if( has_nan(tmp ) ) {
+				std::cerr << K << std::endl;
+				std::cerr << "lambda:" << lambda.transpose() << std::endl;
+				std::cerr << "lambda_prev:" << lambda_prev.transpose() << std::endl;
+				std::cerr << "F:" << std::endl
+						  << F << std::endl;
+				
+				throw std::logic_error("derp!");
+			  }
+
+			  const real lambda_inv = tmp.sum();
+
+			  if( lambda_inv ) {
+				tmp /= lambda_inv;
+
+				next.noalias() = G * tmp;
+				diff = next - lambda;
 		
-		  const real alpha = track(lambda, diff);
-		  lambda += alpha * diff;
-
-		  net = mapping_response * lambda;
-		  // std::cout << k << " alpha: " << alpha << std::endl;
+				// const real alpha = track(lambda, diff);
+				// lambda += alpha * diff;
+				// net = mapping_response * lambda;
+			
+				lambda = next;
+				net.noalias() = NG * tmp;
+			  }
+			  
+			  // std::cout << k << " alpha: " << alpha << std::endl;
+			}
+		  }
 		}
 	  }
 
@@ -344,7 +424,7 @@ void pgs::solve_impl(vec& res,
 		  Np = -Ng;
 		}
 		
-		grad_prev = grad;
+		grad_prev.swap(grad);
 	  }
 
 	  
@@ -407,6 +487,7 @@ void pgs::fetch_blocks(const system_type& system) {
 	
 	unsigned off = 0;
 
+	// TODO parallelize
 	for(unsigned i = 0, n = system.compliant.size(); i < n; ++i) {
 		system_type::dofs_type* const dofs = system.compliant[i];
 

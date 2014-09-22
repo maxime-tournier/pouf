@@ -205,7 +205,7 @@ class Body:
                                       scale3d = concat(self.scale))
                         
             visual_map = visual.createObject('RigidMapping', 
-                                             template = 'Rigid' + ', ' + visual_template, 
+                                             template = 'Rigid3d' + ', ' + visual_template, 
                                              input = '@../')
         # collision model
         if self.collision != None:
