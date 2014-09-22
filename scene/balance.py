@@ -375,11 +375,11 @@ def createScene(node):
     scene = pouf.tool.scene( node )
 
     num = node.createObject('pouf.jacobi',
-                            nlnscg = True,
-                            # anderson = 4,
-                            iterations = 150,
-                            threads = 2,
-                            precision = 0,
+                            # nlnscg = True,
+                            anderson = 4,
+                            iterations = 100,
+                            threads = 4,
+                            precision = 1e-7,
                             omega = 1 )
 
     ode = node.getObject('ode')
@@ -405,10 +405,10 @@ def createScene(node):
 
 
     am = control.Constraint('am-control', node, dofs, 3)
-    am.ff.isCompliance = True # False
+    am.ff.isCompliance = False
 
     com = control.Constraint('com-feet-proj-control', node, dofs, 2)
-    com.ff.isCompliance = True # False
+    com.ff.isCompliance = False
     
     gui = Gui(robot.inner_dofs)
     gui.show()

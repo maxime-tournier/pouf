@@ -3,11 +3,12 @@
 namespace math {
 
 
-  void nlnscg::step(vec& x, const vec& dx) {
+  void nlnscg::step(vec& x, const vec& dx, const vec& diag) {
 
 	// note: grad = -dx;
 	
-	const real tmp = dx.squaredNorm();
+	// const real tmp = dx.squaredNorm();
+	const real tmp = dx.dot( diag.cwiseProduct(dx) );
 		
 	if( grad_norm2 && p.size() ) {
 	  

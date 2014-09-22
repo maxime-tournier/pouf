@@ -259,7 +259,7 @@ void jacobi::solve_impl(vec& res,
 
 	if( nlnscg.getValue() ) {
 	  f = ( lambda - lambda_prev ).array();
-	  accel_nlnscg.step(lambda, f);
+	  accel_nlnscg.step(lambda, f, diagonal);
 	}
 
 
@@ -271,15 +271,16 @@ void jacobi::solve_impl(vec& res,
 	primal.noalias() = JP * net - constant + sys.C * lambda;
 	if( damping ) primal += damping * lambda;
 	
-	const real error = lambda.cwiseMin(primal).norm();
+	real error = lambda.cwiseMin(primal).norm();
 
 	// TODO good stop criterion
 	if( log.getValue() ) {
 	  edit(convergence)->push_back(error);
 	}
 
+	error = (lambda - lambda_prev).norm();
 	if( error <= epsilon ) break;
-	  
+	
   }
 	
   res.head( sys.m ) += net;

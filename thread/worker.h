@@ -10,8 +10,6 @@ namespace thread {
 
   // simple worker thread with its own work queue
   class worker {
-	std::thread thread;
-	
 	std::condition_variable cv;
 
 	typedef std::mutex mutex_type;
@@ -30,6 +28,10 @@ namespace thread {
 	
   private:
 	std::queue<task_type> queue;
+
+	// make sure this is the last initialized !
+	std::thread thread;
+	
   };
 
 

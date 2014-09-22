@@ -20,10 +20,21 @@ namespace math {
   void anderson::step(vec& out, const vec& x, const vec& dx) {
 	if( !m ) return;
 
-	tmp.noalias() = F.transpose() * F.col(index);
-	
+	const unsigned prev = (index + m - 1) % m;
+
+	// TODO optimize previously computed norm
+	if( dx.squaredNorm() > F.col(prev).squaredNorm() ) {
+	  // reset yo
+	  
+	  G = mat::Zero(n, m);
+	  F = mat::Zero(n, m);
+	  K = mat::Zero(m, m);
+	}
+
 	G.col(index) = x;
 	F.col(index) = dx;
+
+	tmp.noalias() = F.transpose() * F.col(index);
 
 	K.col(index) = tmp;
 	K.row(index) = tmp.transpose();
@@ -39,8 +50,6 @@ namespace math {
 	} else {
 	  std::cout << "DERP" << std::endl;
 	}
-
-	std::cout << "alpha: " << tmp.transpose() << std::endl;
 
 	index = (index + 1) % m;
   }

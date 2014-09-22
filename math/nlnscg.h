@@ -11,7 +11,7 @@ namespace math {
 	real grad_norm2;
 	
 	// dx = x - x_old
-	void step(vec& x, const vec& dx);
+	void step(vec& x, const vec& dx, const vec& diag);
 	
   };
 
