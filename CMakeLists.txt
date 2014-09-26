@@ -75,6 +75,6 @@ AddLinkerDependencies(SofaGuiQt Compliant)
 
 include(${SOFA_CMAKE_DIR}/postProject.cmake)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0 -g")
-remove_definitions(-DNDEBUG )
+# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0 -g")
+# remove_definitions(-DNDEBUG )
 
