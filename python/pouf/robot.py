@@ -465,3 +465,14 @@ class Humanoid:
 
         
         return res
+
+
+
+    def named_joints(self):
+        for j in self.joints:
+            col = 0
+            for i, enabled in enumerate(j.dofs):
+                if enabled:
+                    key = (j.name, col)
+                    yield key
+                    col += 1
