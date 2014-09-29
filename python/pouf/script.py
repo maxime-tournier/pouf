@@ -39,6 +39,7 @@ class Proxy(Sofa.PythonScriptController):
     def bwdInitGraph(self, node):
         return getattr(self.impl, 'bwdInitGraph', _noop)(node)
 
+    # can't call this 
     # def onLoaded(self, node):
     #     return getattr(self.impl, 'onLoaded', _noop)(node)
 

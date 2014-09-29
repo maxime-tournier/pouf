@@ -253,7 +253,7 @@ class Constraint:
         self.map = self.node.createObject('AffineMultiMapping',
                                           name = 'map',
                                           hard_positions = True,
-                                          template = '{0}, Vec1d'.format( template ),
+                                          template = '{0},Vec1d'.format( template ),
                                           input = concat( input ),
                                           output = '@dofs',
                                           matrix = concat( self.matrix.reshape( self.matrix.size ).tolist() ),

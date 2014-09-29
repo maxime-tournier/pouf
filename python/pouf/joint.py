@@ -135,7 +135,7 @@ class Revolute(Base):
         limit = res.createChild('limit')
         
         dofs = limit.createObject('MechanicalObject', template = 'Vec1d')
-        map = limit.createObject('ProjectionMapping', template = 'Vec6d, Vec1d' )
+        map = limit.createObject('ProjectionMapping', template = 'Vec6d,Vec1d' )
 
         limit.createObject('UniformCompliance',
                            template = 'Vec1d',
