@@ -151,6 +151,7 @@ def createScene(node):
                             precision = 1e-8,
                             # nlnscg = True,
                             accel_alt = 4,
+                            threads = 4,
                             # accel = 4,
                             #log = True
     )

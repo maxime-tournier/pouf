@@ -71,7 +71,7 @@ def scene(root):
     proximity = node.createObject('NewProximityIntersection',
                                   name = 'proximity' )
 
-    proximity.alarmDistance = 0.025
+    proximity.alarmDistance = 0.021
     proximity.contactDistance = 0.02
 
     manager = node.createObject('DefaultContactManager',
