@@ -90,7 +90,9 @@ void jacobi::reset() {
 
   base::reset();
 
-  pool = thread::pool( threads.getValue() );
+  const int n = threads.getValue();
+  pool = thread::pool( std::max<int>(0, n - 1) );
+  
 }
 
 
@@ -125,7 +127,7 @@ void jacobi::factor(const system_type& sys) {
   vec prec = vec::Zero( sys.m );
 
   // count non-zero entries per row of mapping_response
-  for(int k = 0; k < mapping_response.outerSize(); ++k) {
+  for(int k = 0; k < mapping_response.outerSize(); ++k) { 
 	for(cmat::InnerIterator it(mapping_response, k); it; ++it) {
 	  prec( it.row() ) += 1;
 	}
@@ -157,20 +159,30 @@ void jacobi::factor(const system_type& sys) {
 
   using namespace sofa::component::linearsolver;
 
+
   // homogenize tangent directions to get anisotropic friction
   if( homogenize.getValue() ) {
 
+	friction_mask = vec::Zero(sys.n);
+	
 	for(unsigned i = 0, n = blocks.size(); i < n; ++i) {
 	  const block& b = blocks[i];
 
-	  if( dynamic_cast< CoulombConstraint* >(b.projector) ) {
+	  if( CoulombConstraint* p = dynamic_cast< CoulombConstraint* >(b.projector) ) {
 		const real value = diagonal.segment<2>(b.offset + 1).maxCoeff();
-		diagonal.segment<2>(b.offset + 1).setConstant( value );
-	  }
 
+		const real ratio = (3 * p->mu) * std::sqrt(value / diagonal(b.offset) );
+		
+		// std::cout << "friction ratio: " << ratio << std::endl;
+		
+		diagonal.segment<2>(b.offset + 1).setConstant( value );
+		friction_mask.segment<2>(b.offset + 1).setOnes();
+	  }
+	  
 	}
 
-  }  
+  }
+
 }
 
 
@@ -191,6 +203,8 @@ void jacobi::solve_impl(vec& res,
 
   // free velocity
   vec tmp( sys.m );
+
+  vec v = res.head(sys.m);
 	
   response->solve(tmp, sys.P.selfadjointView<Eigen::Upper>() * rhs.head( sys.m ) );
   res.head(sys.m).noalias() = sys.P.selfadjointView<Eigen::Upper>() * tmp;
@@ -206,6 +220,12 @@ void jacobi::solve_impl(vec& res,
   // lcp rhs
   vec constant = rhs.tail(sys.n) - JP * res.head( sys.m );
 
+  vec hack;
+  // hack !
+  if( newmark.getValue() && !correct && friction_mask.size() ) {
+	hack = friction_mask.cwiseProduct( JP * v );
+  }
+  
   // constraint error
   vec primal = JP * net - constant + sys.C * lambda;
   if( damping ) primal += damping * lambda;
@@ -242,11 +262,27 @@ void jacobi::solve_impl(vec& res,
 	  for(unsigned i = c.start; i < c.end; ++i) {
 		const block& b = blocks[i];
 		chunk_type lambda_chunk(&lambda(b.offset), b.size);
-		
+
+		// hack
+		using namespace sofa::component::linearsolver;
+		if( CoulombConstraint* p = dynamic_cast<CoulombConstraint*>(b.projector) ) {
+
+		  const bool in_cone = lambda_chunk(0) > 0 &&
+			lambda_chunk.tail<2>().norm() <= p->mu * lambda_chunk(0);
+
+		  if(newmark.getValue() && hack.size() && !in_cone) {
+			lambda_chunk.array() -= hack.segment<3>(b.offset).array() /
+			  diagonal.segment<3>(b.offset).array();
+		  }
+		  
+		} 
+		  
 		if( b.projector ) {
 		  b.projector->project( lambda_chunk.data(), lambda_chunk.size(), correct );
 		  assert( !has_nan(lambda_chunk.eval()) );
 		}
+
+		
 	  }
 	};
 	pool.parallel_for(0, blocks.size(), project);
@@ -269,6 +305,12 @@ void jacobi::solve_impl(vec& res,
 	parallel_prod(pool, net, mapping_response, lambda, buffer);
 	
 	primal.noalias() = JP * net - constant + sys.C * lambda;
+
+	// hack
+	if( friction_mask.size() ) {
+	  // primal += 1e-7 * friction_mask.cwiseProduct(lambda);
+	}
+	
 	if( damping ) primal += damping * lambda;
 	
 	real error = lambda.cwiseMin(primal).norm();
@@ -300,7 +342,9 @@ jacobi::jacobi()
 	convergence(initData(&convergence, "convergence", "convergence history (read-only)")),
 	filename(initData(&filename, "filename", "dump lcp data to filename")),
 	homogenize(initData(&homogenize, true, "homogenize", "homogenize tangent directions")),
-	threads(initData(&threads, unsigned(1), "threads", "number of concurrent threads"))
+	threads(initData(&threads, unsigned(1), "threads", "number of additional concurrent threads")),
+	newmark(initData(&newmark, false, "newmark", "experimental newmark friction"))
+	
 {
   
 }

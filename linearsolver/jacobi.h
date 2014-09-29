@@ -69,6 +69,10 @@ protected:
 
   thread::pool pool;
 
+  sofa::Data<bool> newmark;
+  
+  // hack
+  vec friction_mask;
 };
 
 

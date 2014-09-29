@@ -611,7 +611,10 @@ namespace sofa {
 			}
 
 			update_scene(state, graph, x, dt);
-			if( integration.getValue() ) integrate( &mparams, posId, velId );
+
+			if( integration.getValue() ) {
+			  integrate( &mparams, posId, velId );
+			}
 
 		  }
 

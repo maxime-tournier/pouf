@@ -16,6 +16,7 @@ namespace thread {
 
 
   void worker::loop() {
+
 	try {
 	  cv.notify_one();
 
@@ -23,10 +24,12 @@ namespace thread {
 	  while( true ) {
 		{
 		  lock_type lock(mutex);
+
 		  cv.wait(lock, [&] { return !queue.empty();});
 		  task = queue.front();
 		  queue.pop();
 		}
+		// mutex.unlock();
 		
 		task();
 	  }
