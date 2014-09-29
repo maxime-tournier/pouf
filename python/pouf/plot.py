@@ -1,3 +1,5 @@
+import sys
+sys.ps1 = 'SOMETHING'
 import matplotlib.pyplot as plt
 
 
@@ -15,7 +17,6 @@ def draw( data, figure = None, log = None ):
         plt.yscale('log')
     plt.legend()
 
-    plt.ion()
     plt.draw()
 
 
