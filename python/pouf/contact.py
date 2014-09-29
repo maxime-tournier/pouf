@@ -18,6 +18,7 @@ def active(ground):
                      for p, f in zip( dofs.position, dofs.force )
                      if np.dot(f, f) > 0
                  ])
+
     return res
 
 # support polygon, given the output from active. only for 2d,
@@ -38,10 +39,38 @@ def polygon( info ):
     # convex hull
     if len(points) > 3:
         hull = ConvexHull( points )
-        return hull.vertices
+        return hull.vertices 
     else:
-        return range(len(info))
+        return range(len(points))
 
+    duplicates = False
+    if duplicates: 
+        # eliminate duplicates to keep QHull happy and store their
+        # original index
+        dup = { (x[0], x[1]): i for i, x in enumerate(points) }
+
+        # update points without duplicates
+        points = np.zeros( (len(dup), 2) )
+
+        for i, (x, y) in enumerate(dup):
+            points[i, :] = [x, y]
+
+        # map indices from new to old
+        indir = [ dup[k] for k in dup ]
+
+        # convex hull
+        if len(points) > 3:
+            hull = ConvexHull( points )
+            vertices =  hull.vertices 
+        else:
+            vertices =  range(len(points))
+        
+        # TODO output warning in case of duplicates ?
+        if len(info) != len(indir):
+            print 'warning: duplicate contact points'
+
+        # map back to original points
+        return [ indir[v] for v in vertices ]
 
 def wrench( node ):
     return np.array( node.getObject('dofs').force[0] )
