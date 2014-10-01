@@ -3,6 +3,7 @@
 #include <QGLViewer/qglviewer.h>
 
 
+// TODO: preprocessor based on SOFA_GUI_QGLVIEWER
 
 extern "C" {
 

@@ -46,7 +46,6 @@ set(SOURCE_FILES
 	tool/propagate_position_velocity.cpp
 	tool/data.cpp
 	tool/disable_rigid_mouse_interaction.cpp
-	tool/python.cpp
 
 	linearsolver/pgs.cpp
 	linearsolver/jacobi.cpp
@@ -67,6 +66,12 @@ set(SOURCE_FILES
 set(README_FILES
 	README.md
 	)
+
+
+if(SOFA-LIB_GUI_QGLVIEWER)
+	list(APPEND SOURCE_FILES tool/python.cpp)
+endif()
+
 
 add_library(${PROJECT_NAME} SHARED ${HEADER_FILES} ${MOC_FILES} ${SOURCE_FILES} ${README_FILES})
 
