@@ -25,7 +25,6 @@ set(HEADER_FILES
 	
 	mapping/RigidMultiMapping.h
 
-	thread/worker.h
 	thread/pool.h
 
 	math/anderson.h
@@ -55,7 +54,6 @@ set(SOURCE_FILES
 #	adaptive/manager.cpp
 
 	mapping/RigidMultiMapping.cpp
-	thread/worker.cpp
 
 	math/anderson.cpp
 	math/nlnscg.cpp
@@ -67,6 +65,12 @@ set(README_FILES
 	README.md
 	)
 
+
+if(NOT MSVC)
+  AddCompilerDefinitions("SOFA_HAVE_STD_THREAD")
+  list(APPEND HEADER_FILES thread/worker.h)
+  list(APPEND SOURCE_FILES thread/worker.cpp)
+endif()
 
 if(SOFA-LIB_GUI_QGLVIEWER)
 	list(APPEND SOURCE_FILES tool/python.cpp)

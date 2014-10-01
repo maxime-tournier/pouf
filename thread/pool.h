@@ -1,7 +1,10 @@
 #ifndef THREAD_POOL_H
 #define THREAD_POOL_H
 
+#ifdef SOFA_HAVE_STD_THREAD
 #include "worker.h"
+
+
 #include <list>
 
 namespace thread {
@@ -67,6 +70,27 @@ namespace thread {
 
 
 }
+
+
+#else
+
+namespace thread {
+
+  struct pool {
+
+	pool(unsigned n = 0) {
+	  if(n) throw std::logic_error("you need c++11 <thread> support to get multiple threads");
+	}
+	
+	template<class F>
+	void parallel_for(int start, int end, const F& f) const {
+	  f( start, end );
+	}
+	
+  };
+}
+
+#endif
 
 
 
