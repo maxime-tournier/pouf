@@ -74,6 +74,8 @@ namespace thread {
 
 #else
 
+// quick hack to keep compiler happy
+
 namespace thread {
 
   struct pool {
@@ -81,10 +83,23 @@ namespace thread {
 	pool(unsigned n = 0) {
 	  if(n) throw std::logic_error("you need c++11 <thread> support to get multiple threads");
 	}
+
+	struct chunk {
+	  int start, end;
+	  unsigned id;
+	};
+
+
+	unsigned size() const { return 1; }
 	
 	template<class F>
 	void parallel_for(int start, int end, const F& f) const {
-	  f( start, end );
+	  chunk c;
+	  c.start = start;
+	  c.end = end;
+	  c.id = 0;
+	  
+	  f( c );
 	}
 	
   };

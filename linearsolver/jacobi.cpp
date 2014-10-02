@@ -30,8 +30,6 @@ static void response_solve(thread::pool& pool,
   using namespace sofa::component::linearsolver;
   std::vector<AssembledSystem::cmat> chunk(pool.size());
 
-  std::mutex mutex;
-  
   auto task = [&](const thread::pool::chunk& c) {
 	chunk[c.id].resize(rhs.rows(), c.end - c.start);
 	
