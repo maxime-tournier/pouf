@@ -4,6 +4,11 @@ import re
 
 import numpy as np
 
+import sys
+import code
+import select
+
+
 def concat(x):
     return ' '.join(map(str, x))
 
@@ -112,3 +117,37 @@ def dll(name):
 
     prefix = 'lib'
     return ctypes.CDLL( prefix + name + extension )
+
+
+
+
+class Console:
+
+    def ready(self):
+        sys.stdout.write( self.prompt )
+        sys.stdout.flush()
+
+    def __init__(self, locals = None ):
+
+        if locals:
+            self.impl = code.InteractiveConsole( locals )
+        else:
+            self.impl = code.InteractiveConsole()
+
+        self.prompt = '>>> '
+
+        print 'console started'
+        self.ready()
+
+    def process(self):
+        read, _, _ = select.select([sys.stdin], [], [], 0)
+        if read:
+            line = sys.stdin.readline()
+            ret = self.impl.push( line )
+
+            if not ret:
+                self.prompt = '>>> '
+            else:
+                self.prompt = '... '
+
+            self.ready()
