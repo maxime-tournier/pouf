@@ -128,18 +128,13 @@ class Console:
         sys.stdout.flush()
 
     def __init__(self, locals = None ):
-
-        if locals:
-            self.impl = code.InteractiveConsole( locals )
-        else:
-            self.impl = code.InteractiveConsole()
-
+        self.impl = code.InteractiveConsole( locals )
         self.prompt = '>>> '
 
         print 'console started'
         self.ready()
 
-    def process(self):
+    def poll(self):
         read, _, _ = select.select([sys.stdin], [], [], 0)
         if read:
             line = sys.stdin.readline()
