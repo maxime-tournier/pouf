@@ -1,58 +1,67 @@
-
 import subprocess
 import sys
 import os
 import select
 import code 
 
+import readline
+
 class Console(code.InteractiveConsole):
 
     def start(self):
-        # communication pipes
-        prompt = os.pipe() 
-        cmd = os.pipe()
-
-        # subprocess with in/out fd, and forwarding stdin
-        sub = subprocess.Popen(['python', __file__, str(prompt[0]), str(cmd[1])],
-                               stdin = sys.stdin)
-
-        # open files
-        self.prompt = os.fdopen(prompt[1], 'w')
-        self.cmd = os.fdopen(cmd[0], 'r')
+        # flush previous crap
+        while self.ready():
+            self.recv()
 
         # ready
         self.send('>>> ')
 
     # send prompt to indicate we are ready
     def send(self, data):
-        self.prompt.write(data + '\n')
-        self.prompt.flush()
+        prompt.write(data + '\n')
+        prompt.flush()
 
     # receive command line
     def recv(self):
-        res = self.cmd.readline()
+        res = cmd.readline()
         if res: return res.rstrip('\n')
         return res
 
     # is there any available command ?
     def ready(self):
-        read, _, _ = select.select([ self.cmd ], [], [], 0)
+        read, _, _ = select.select([ cmd ], [], [], 0)
         return read
 
     # execute next command, blocks on console input
     def next(self):
         line = self.recv()
-        prompt = '>>> '
+        data = '>>> '
         
         if self.push( line ):
-            prompt = '... '
+            data = '... '
             
-        self.send( prompt )
+        self.send( data )
         
     # convenience
     def poll(self):
         if self.ready(): self.next()
 
+
+class History:
+    def __init__(self, filename):
+        self.filename = os.path.expanduser( filename )
+
+    def __enter__(self):
+        try:
+            readline.read_history_file(self.filename)
+            print 'loaded console history from', self.filename
+        except IOError:
+                pass
+        return self
+
+    def __exit__(self, type, value, traceback):
+        readline.write_history_file( self.filename )
+    
 
 if __name__ == '__main__':
     import readline
@@ -73,11 +82,25 @@ if __name__ == '__main__':
         return file_in.readline().rstrip('\n')
 
     try:
-        print 'console started'
-        while True:
-            send( raw_input( recv() ) )
+        with History( "~/.sofa-history" ):
+            print 'console started'
+            while True:
+                send( raw_input( recv() ) )
             
     except EOFError:
         print 'console exited (EOF)'
         send( 'import sys; sys.exit()' )
         
+else:
+    
+    # communication pipes
+    prompt = os.pipe() 
+    cmd = os.pipe()
+
+    # subprocess with in/out fd, and forwarding stdin
+    sub = subprocess.Popen(['python', __file__, str(prompt[0]), str(cmd[1])],
+                                stdin = sys.stdin)
+
+    # open files
+    prompt = os.fdopen(prompt[1], 'w')
+    cmd = os.fdopen(cmd[0], 'r')
