@@ -128,9 +128,10 @@ class Implicit:
         # update mapping just in case
         self.map.set = concat([0] + self.basis)
         self.map.offset = str(self.pos)
-        self.map.init()         # TODO is apply triggered ?
+        self.map.init()  # TODO is apply triggered ?
 
-        stiff = self.kp 
+        # setup forcefield
+        stiff = self.kp # + self.ki * dt
         damping = self.kd
         
         self.ff.compliance = 1.0 / stiff
@@ -139,12 +140,21 @@ class Implicit:
         # trigger compliance matrix recomputation 
         self.ff.init()
 
-        self.set_force( self.ki * self.integral )
-
-        # pid acces
+        # update stuff
         self.p = self.dofs.position
         self.d = self.dofs.velocity
-        self.dt = dt
+
+        # explicit part of the force
+        explicit = -self.ki * self.integral
+
+        # net pid force
+        self.tau = -self.kp * self.p - self.kd * self.d + explicit
+
+        # apply explicit forces
+        self.set_force( explicit )
+
+        # update integral
+        self.integral += dt * self.p;
 
     # get/set/add explicit force 
     def get_force(self):
@@ -177,13 +187,13 @@ class Implicit:
     # call this during onEndAnimationStep
     def post_step(self, dt):
         # update integral with error on time step end
-        self.integral -= dt * self.dofs.position
+        # self.integral -= dt * self.dofs.position
 
-        self.p = self.dofs.position
-        self.d = self.dofs.velocity
+        # self.p = self.dofs.position
+        # self.d = self.dofs.velocity
 
         # save torque
-        self.tau = self.post_force()
-        
+        # self.tau = self.post_force()
+        pass
 
 

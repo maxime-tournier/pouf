@@ -4,7 +4,8 @@ import os
 import select
 import code 
 
-import readline
+
+import signal
 
 class Console(code.InteractiveConsole):
 
@@ -67,6 +68,7 @@ if __name__ == '__main__':
     import readline
     import sys
     import os
+    import signal
 
     fd_in = int(sys.argv[1])
     file_in = os.fdopen( fd_in )
@@ -80,27 +82,57 @@ if __name__ == '__main__':
 
     def recv():
         return file_in.readline().rstrip('\n')
-
+    
     try:
         with History( "~/.sofa-history" ):
             print 'console started'
             while True:
                 send( raw_input( recv() ) )
-            
+
+    except KeyboardInterrupt:
+        print 'console exited (SIGINT)'
+        sys.exit(0)
+        
     except EOFError:
         print 'console exited (EOF)'
-        send( 'import sys; sys.exit()' )
+        send( 'import sys; sys.exit(0)' )
         
 else:
+
+    from PySide import QtCore
+    import signal
+    import os
     
     # communication pipes
     prompt = os.pipe() 
     cmd = os.pipe()
 
+    copy = os.dup(sys.stdin.fileno())
+
     # subprocess with in/out fd, and forwarding stdin
     sub = subprocess.Popen(['python', __file__, str(prompt[0]), str(cmd[1])],
-                                stdin = sys.stdin)
+                           stdin = copy)
 
+    
     # open files
     prompt = os.fdopen(prompt[1], 'w')
     cmd = os.fdopen(cmd[0], 'r')
+
+    # so here is what happens: when closing the main window, the
+    # python interpreter is shut down abruptly, and Py_Finalize is not
+    # called, so readline can not restore the terminal to a nice state
+    # before exiting. if we try to terminate python from c++ static
+    # destructors, some objects allocated by pyside still live on and
+    # this results in a segfault. so a solution is to trap gui
+    # termination using pyside, send a SIGINT to the child process and
+    # wait for its termination
+
+    # send SIGINT to child so that readline do not bork terminal
+    def handler():
+        sub.send_signal(signal.SIGINT)
+        sub.wait()
+
+    # TODO is there a way to do that cleanly ?
+    app = QtCore.QCoreApplication.instance()
+    app.aboutToQuit.connect( handler )
+    
