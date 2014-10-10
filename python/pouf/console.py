@@ -62,10 +62,20 @@ else:
     import atexit
 
 
+    from PySide import QtCore
+    
+
     class Console(code.InteractiveConsole):
 
-        def __init__(self, locals = None):
+        def __init__(self, locals = None, timeout = 100):
             code.InteractiveConsole.__init__(self, locals)
+
+            def callback():
+                self.poll()
+
+            self.timer = QtCore.QTimer()
+            self.timer.timeout.connect( callback )
+            self.timer.start( timeout )
 
         # execute next command, blocks on console input
         def next(self):
@@ -113,6 +123,7 @@ else:
     prompt_out = os.fdopen(prompt[1], 'w')
     cmd_in = os.fdopen(cmd[0], 'r')
 
+    # we're ready
     send('>>> ')
     
     # send SIGINT to child so that readline does not bork terminal
@@ -122,3 +133,11 @@ else:
 
     atexit.register( exit_handler )
     
+
+    # this forces cleanup from python before the gui closes. otherwise
+    # pyside causes segfault on python finalize.
+    def gui_handler():
+        sys.exit(0)
+    
+    app = QtCore.QCoreApplication.instance()
+    app.aboutToQuit.connect( gui_handler )

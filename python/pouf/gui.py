@@ -72,11 +72,5 @@ class Constraint(QtGui.QWidget):
 
 
 
-import sys
 
-# this forces cleanup from python before the gui closes
-def handler():
-    sys.exit(0)
-    
-app = QtCore.QCoreApplication.instance()
-app.aboutToQuit.connect( handler )
+

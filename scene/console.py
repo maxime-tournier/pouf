@@ -7,7 +7,6 @@ from pouf import console
 class Script(Sofa.PythonScriptController):
 
     def onBeginAnimationStep(self, dt):
-        console.poll()
 
         if config.debug:
             print 'onBeginAnimationStep'
@@ -20,7 +19,14 @@ class Config:
         self.debug = False
 
 
-        
+
+
+
+from PySide import QtCore
+
+from datetime import datetime
+
+
 
 def createScene(node):
 
@@ -37,3 +43,4 @@ def createScene(node):
     console = pouf.console.Console( globals() )
 
     node.animate = True
+
