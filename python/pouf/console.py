@@ -1,88 +1,48 @@
-import subprocess
-import sys
+from select import select
 import os
-import select
-import code 
-
-
+import sys
 import signal
-
-class Console(code.InteractiveConsole):
-
-    def start(self):
-        # flush previous crap
-        while self.ready():
-            self.recv()
-
-        # ready
-        self.send('>>> ')
-
-    # send prompt to indicate we are ready
-    def send(self, data):
-        prompt.write(data + '\n')
-        prompt.flush()
-
-    # receive command line
-    def recv(self):
-        res = cmd.readline()
-        if res: return res.rstrip('\n')
-        return res
-
-    # is there any available command ?
-    def ready(self):
-        read, _, _ = select.select([ cmd ], [], [], 0)
-        return read
-
-    # execute next command, blocks on console input
-    def next(self):
-        line = self.recv()
-        data = '>>> '
-        
-        if self.push( line ):
-            data = '... '
-            
-        self.send( data )
-        
-    # convenience
-    def poll(self):
-        if self.ready(): self.next()
-
-
-class History:
-    def __init__(self, filename):
-        self.filename = os.path.expanduser( filename )
-
-    def __enter__(self):
-        try:
-            readline.read_history_file(self.filename)
-            print 'loaded console history from', self.filename
-        except IOError:
-                pass
-        return self
-
-    def __exit__(self, type, value, traceback):
-        readline.write_history_file( self.filename )
-    
 
 if __name__ == '__main__':
     import readline
-    import sys
-    import os
-    import signal
 
-    fd_in = int(sys.argv[1])
+    # prompt input stream
+    fd_in = int(sys.argv[1])    
     file_in = os.fdopen( fd_in )
 
+    # cmd output stream
     fd_out = int(sys.argv[2])
     file_out = os.fdopen( fd_out, 'w' )
 
+    # some helpers
     def send(data):
         file_out.write(data + '\n')
         file_out.flush()
 
     def recv():
-        return file_in.readline().rstrip('\n')
-    
+        while True:
+            res = file_in.readline().rstrip('\n')
+            read, _, _ = select([ file_in ], [], [], 0)
+            if not read: return res
+
+
+    class History:
+        def __init__(self, filename):
+            self.filename = os.path.expanduser( filename )
+
+        def __enter__(self):
+            try:
+                readline.read_history_file(self.filename)
+                print 'loaded console history from', self.filename
+            except IOError:
+                pass
+            return self
+
+        def __exit__(self, type, value, traceback):
+            readline.write_history_file( self.filename )
+
+
+    # main loop
     try:
         with History( "~/.sofa-history" ):
             print 'console started'
@@ -91,48 +51,78 @@ if __name__ == '__main__':
 
     except KeyboardInterrupt:
         print 'console exited (SIGINT)'
-        sys.exit(0)
-        
     except EOFError:
         print 'console exited (EOF)'
-        send( 'import sys; sys.exit(0)' )
+
+    finally:
+        # sigint to parent 
+        os.kill(os.getppid(), signal.SIGINT)
         
 else:
 
-    from PySide import QtCore
-    import signal
-    import os
-    
+    import subprocess
+    import code
+    import atexit
+
+
+    class Console(code.InteractiveConsole):
+
+        def __init__(self, locals = None):
+            code.InteractiveConsole.__init__(self, locals)
+
+        # execute next command, blocks on console input
+        def next(self):
+            line = recv()
+            data = '>>> '
+
+            if self.push( line ):
+                data = '... '
+
+            send( data )
+
+        # convenience
+        def poll(self):
+            if ready(): self.next()
+
+
+    # send prompt to indicate we are ready
+    def send(data):
+        prompt_out.write(data + '\n')
+        prompt_out.flush()
+            
+    # receive command line
+    def recv():
+        res = cmd_in.readline()
+        if res: return res.rstrip('\n')
+        return res
+
+    # is there any available command ?
+    def ready():
+        read, _, _ = select([ cmd_in ], [], [], 0)
+        return read
+
+
     # communication pipes
     prompt = os.pipe() 
     cmd = os.pipe()
 
-    copy = os.dup(sys.stdin.fileno())
-
     # subprocess with in/out fd, and forwarding stdin
-    sub = subprocess.Popen(['python', __file__, str(prompt[0]), str(cmd[1])],
-                           stdin = copy)
+    sub = subprocess.Popen(['python', __file__,
+                            str(prompt[0]), str(cmd[1])],
+                           stdin = sys.stdin)
 
     
-    # open files
-    prompt = os.fdopen(prompt[1], 'w')
-    cmd = os.fdopen(cmd[0], 'r')
+    # open the tubes !
+    prompt_out = os.fdopen(prompt[1], 'w')
+    cmd_in = os.fdopen(cmd[0], 'r')
 
-    # so here is what happens: when closing the main window, the
-    # python interpreter is shut down abruptly, and Py_Finalize is not
-    # called, so readline can not restore the terminal to a nice state
-    # before exiting. if we try to terminate python from c++ static
-    # destructors, some objects allocated by pyside still live on and
-    # this results in a segfault. so a solution is to trap gui
-    # termination using pyside, send a SIGINT to the child process and
-    # wait for its termination
+    send('>>> ')
 
-    # send SIGINT to child so that readline do not bork terminal
+    
+    # send SIGINT to child so that readline does not bork terminal
     def handler():
         sub.send_signal(signal.SIGINT)
         sub.wait()
 
-    # TODO is there a way to do that cleanly ?
-    app = QtCore.QCoreApplication.instance()
-    app.aboutToQuit.connect( handler )
+    atexit.register( handler )
     
