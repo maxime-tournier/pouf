@@ -52,10 +52,7 @@ if __name__ == '__main__':
     except KeyboardInterrupt:
         print 'console exited (SIGINT)'
     except EOFError:
-        print 'console exited (EOF)'
-
-    finally:
-        # sigint to parent 
+        print 'console exited (EOF), terminating parent process'
         os.kill(os.getppid(), signal.SIGINT)
         
 else:
@@ -117,12 +114,11 @@ else:
     cmd_in = os.fdopen(cmd[0], 'r')
 
     send('>>> ')
-
     
     # send SIGINT to child so that readline does not bork terminal
-    def handler():
+    def exit_handler():
         sub.send_signal(signal.SIGINT)
         sub.wait()
 
-    atexit.register( handler )
+    atexit.register( exit_handler )
     
