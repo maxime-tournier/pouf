@@ -1,46 +1,9 @@
 import Sofa
-import pouf
-
-from pouf import console
-
-
-class Script(Sofa.PythonScriptController):
-
-    def onBeginAnimationStep(self, dt):
-
-        if config.debug:
-            print 'onBeginAnimationStep'
-
-
-            
-class Config:
-
-    def __init__(self):
-        self.debug = False
-
-
-
-
-
-from PySide import QtCore
-
-from datetime import datetime
-
-
+from SofaPython import console
 
 def createScene(node):
 
-    node.createObject('PythonScriptController',
-                      filename = __file__,
-                      classname = 'Script' )
-
-    global console
-    global config
-
-    config = Config()
-
-    print 'usage: start the simulation, then type "config.debug = True/False" to enable/disable debugging.'
-    console = pouf.console.Console( globals() )
-
-    node.animate = True
+    print "usage: as always in python, call dir() to see what's available."
+    c = console.Console( locals() )
+    
 

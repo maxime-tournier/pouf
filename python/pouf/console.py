@@ -1,9 +1,20 @@
+"""a readline console module (unix only). 
+
+maxime.tournier@brain.riken.jp
+
+the module starts a subprocess for the readline console and
+communicates through pipes (prompt/cmd).
+
+the console is polled through a timer, which depends on PySide.
+"""
+
 from select import select
 import os
 import sys
 import signal
 
 if __name__ == '__main__':
+
     import readline
 
     # prompt input stream
@@ -25,15 +36,17 @@ if __name__ == '__main__':
             read, _, _ = select([ file_in ], [], [], 0)
             if not read: return res
 
-
+            
     class History:
+        """readline history safe open/close"""
+        
         def __init__(self, filename):
             self.filename = os.path.expanduser( filename )
 
         def __enter__(self):
             try:
                 readline.read_history_file(self.filename)
-                print 'loaded console history from', self.filename
+                # print 'loaded console history from', self.filename
             except IOError:
                 pass
             return self
@@ -44,7 +57,7 @@ if __name__ == '__main__':
 
     # main loop
     try:
-        with History( "~/.sofa-history" ):
+        with History( "~/.sofa-console" ):
             print 'console started'
             while True:
                 send( raw_input( recv() ) )
@@ -61,21 +74,27 @@ else:
     import code
     import atexit
 
-
-    from PySide import QtCore
-    
-
     class Console(code.InteractiveConsole):
 
         def __init__(self, locals = None, timeout = 100):
+            """
+            python interpreter taking input from console subprocess
+            
+            scope is provided through 'locals' (usually: locals() or globals())
+
+            'timeout' (in milliseconds) sets how often is the console polled.
+            """
             code.InteractiveConsole.__init__(self, locals)
 
-            def callback():
-                self.poll()
+            if timeout >= 0:
+                def callback():
+                    self.poll()
 
-            self.timer = QtCore.QTimer()
-            self.timer.timeout.connect( callback )
-            self.timer.start( timeout )
+                from PySide import QtCore
+                
+                self.timer = QtCore.QTimer()
+                self.timer.timeout.connect( callback )
+                self.timer.start( timeout )
 
         # execute next command, blocks on console input
         def next(self):
@@ -138,6 +157,8 @@ else:
     # pyside causes segfault on python finalize.
     def gui_handler():
         sys.exit(0)
+
+    from PySide import QtCore
     
     app = QtCore.QCoreApplication.instance()
     app.aboutToQuit.connect( gui_handler )
