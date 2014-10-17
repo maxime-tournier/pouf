@@ -58,9 +58,13 @@ class State( pouf.control.FSM ):
     def __init__(self):
         pouf.control.FSM.__init__(self)
         
-        self.states = ['start', 'balance']
-        self.transitions = [ ('ready', 'start', 'balance') ]
+        self.states = ['start', 'balance', 'panic' ]
+        self.transitions = [ ('ready', 'start', 'balance'),
+                             ('derp', 'balance', 'panic') ]
+        
         self.initial = 'start'
+
+
 
         self.L = None
         self.H = None
@@ -75,7 +79,14 @@ class State( pouf.control.FSM ):
 
         self.com_force = None
 
-        
+    def derp(self):
+        return self.robot.com()[1] < 0.3
+
+    def enter_panic(self):
+        print 'panic !'
+        self.robot.node.getRoot().reset()
+
+    
     def enter_start(self):
 
         self.am.enable( False )
@@ -377,9 +388,9 @@ def createScene(node):
     num = node.createObject('pouf.jacobi',
                             # nlnscg = True,
                             anderson = 4,
-                            iterations = 120,
+                            iterations = 150,
                             threads = 4,
-                            newmark = True,
+                            newmark = False,
                             precision = 0,
                             omega = 1 )
 
