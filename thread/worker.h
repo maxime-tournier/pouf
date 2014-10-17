@@ -24,7 +24,12 @@ namespace thread {
 	~worker();
 	
 	typedef std::function< void () > task_type;
+
 	void push(const task_type& );
+	void push(task_type&& );
+
+	// not thread-safe
+	void unsafe_push(const task_type& );
 	
   private:
 	std::queue<task_type> queue;

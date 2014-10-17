@@ -37,11 +37,11 @@ namespace thread {
 		{
 		  lock_type sub = first ? std::move(lock) : lock_type(mutex);
 		  cv.wait(sub, [&] { return !queue.empty();});
-		  task = queue.front();
+		  task = std::move( queue.front() );
 		  queue.pop();
-		  first = false;
 		}
-		
+
+		first = false;
 		task();
 	  }
 	  
@@ -54,6 +54,20 @@ namespace thread {
 	  lock_type lock(mutex);
 	  queue.push( task );
 	}
+	cv.notify_one();
+  }
+
+  void worker::push(task_type&& task) {
+	{
+	  lock_type lock(mutex);
+	  queue.push( std::move(task) );
+	}
+	cv.notify_one();
+  }
+
+
+  void worker::unsafe_push(const task_type& task) {
+	queue.push( task );
 	cv.notify_one();
   }
 
