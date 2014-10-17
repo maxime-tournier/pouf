@@ -72,12 +72,69 @@ def insert(node, script):
     res = __insert(node, filename = __file__, classname = 'Proxy' )
     res.impl = script
 
-    
-
 
 # convenience
 class Base:
+    
     def __init__(self, node):
         insert(node, self)
 
+        # callbacks
+        self.pre_step = []
+        self.post_step = []
+        self.on_reset = []
+        self.on_draw = []
 
+    def onBeginAnimationStep(self, dt):
+        for cb in self.pre_step:
+            cb(dt)
+
+    def onEndAnimationStep(self, dt):
+        for cb in self.post_step:
+            cb(dt)
+
+    def reset(self):
+        for cb in self.on_reset:
+            cb()
+
+def make(node, filename, **kwargs):
+
+    class Generator(Sofa.PythonScriptController):
+
+        def onLoaded(self, node):
+            global shared
+            self.data = shared
+            del shared
+
+        def _gen(self, what):
+                return self.data[what]() if what in self.data else None
+            
+        def reset(self):
+            self.simulation = self._gen('simulation')
+            self.on_draw = self._gen('draw')
+
+            if self.simulation: self.simulation.next()
+            
+        def onBeginAnimationStep(self, dt):
+            if self.simulation: self.simulation.send( dt )
+
+        def draw(self):
+            if self.on_draw: self.on_draw.next()
+            
+
+    global shared
+    shared = kwargs
+
+    # monkey-patch calling module with controller class
+    import os
+    mod_name = os.path.splitext( os.path.basename(filename) )[0]
+    module = __import__(mod_name)
+
+    module.__controller = Generator
+
+    ret = node.createObject('PythonScriptController',
+                            filename = filename,
+                            classname = '__controller')
+
+    
+    return ret
