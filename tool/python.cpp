@@ -88,7 +88,17 @@ extern "C" {
   sofa::simulation::Node* node_child(sofa::simulation::Node* node, const char* name) {
 	return node->getChild( name );
   }
-  
+
+  void node_each_child(sofa::simulation::Node* node, void (*func)(sofa::simulation::Node*) ) {
+	sofa::simulation::Node::Children children = node->getChildren();
+
+	for(unsigned i = 0, n = children.size(); i < n; ++i) {
+	  // TODO safer cast ?
+	  func( (sofa::simulation::Node*) (children[i]) );
+	}
+	
+  }
+
   sofa::core::objectmodel::BaseObject* node_object(sofa::simulation::Node* node, const char* name) {
 	return node->getObject( name );
   }
