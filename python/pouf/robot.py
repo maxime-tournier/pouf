@@ -416,6 +416,12 @@ class Humanoid:
         return [arm, forearm]
 
 
+    def leg_segments(self, side):
+
+        return map(lambda x: getattr(self, side + x),
+                   ['femur', 'tibia', 'foot', 'toe'])
+
+
 
 
 
