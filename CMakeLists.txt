@@ -14,7 +14,6 @@ set(HEADER_FILES
 	tool/assemble.h
 	tool/find_insert.h
 	tool/graph_vector.h
-	tool/action.h
 	tool/data.h
 
 	linearsolver/pgs.h
@@ -41,7 +40,6 @@ set(SOURCE_FILES
 	tool/mapping_graph.cpp
 	tool/assemble.cpp
 	tool/graph_vector.cpp
-	tool/action.cpp
 	tool/propagate_position_velocity.cpp
 	tool/data.cpp
 	tool/disable_rigid_mouse_interaction.cpp
@@ -72,12 +70,23 @@ if(NOT MSVC)
   list(APPEND SOURCE_FILES thread/worker.cpp)
 endif()
 
+if(APPLE)
+  find_package(OpenGL REQUIRED)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -framework OpenGL")
+  list(APPEND SOURCE_FILES tool/gl.cpp)
+endif()
+  
 if(SOFA-LIB_GUI_QGLVIEWER)
 	list(APPEND SOURCE_FILES tool/python.cpp)
 endif()
 
 
 add_library(${PROJECT_NAME} SHARED ${HEADER_FILES} ${MOC_FILES} ${SOURCE_FILES} ${README_FILES})
+
+
+# if(APPLE)
+#   target_link_libraries(${PROJECT_NAME} ${OPENGL_LIBRARIES})
+# endif()
 
 AddCompilerDefinitions("SOFA_BUILD_POUF")
 AddLinkerDependencies(SofaGuiQt Compliant)

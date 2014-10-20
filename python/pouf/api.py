@@ -11,7 +11,7 @@ class Class(ctypes.Structure):
         
         res =  object.__getattribute__(self, attr)
 
-        if type(res) == dll.__func_type__:
+        if type(res) == _func_type_:
             return types.MethodType( res, self)
         else:
             return res
@@ -43,15 +43,17 @@ def load():
 
     return ctypes.CDLL( full )
 
+# setup
+dll = load()
+
 # classes
 class Simulation(Class): pass
 class Object(Class): pass
 
-
 class Node(Class):
 
     # node/object based on relative path (downwards only)
-    def find(self, path):
+    def relative(self, path):
         split = path.split('/')
 
         res = self
@@ -78,14 +80,10 @@ class Node(Class):
         self.each_child( callback )
 
         return res
-    
-# setup
-dll = load()
-dll.simulation.restype = Simulation
-dll.__func_type__ = type(dll.simulation)
 
 
-# helper
+
+# helper function to register dll 
 def func(f, **kwargs):
 
     for k in kwargs:
@@ -105,6 +103,10 @@ def func(f, **kwargs):
     else:
         return f
 
+
+simulation = func(dll.simulation, restype = Simulation)
+_func_type_ = type(simulation)
+    
 
 # avanti
 Simulation.root = func(dll.simulation_root, restype = Node)
