@@ -100,7 +100,7 @@ def scene(root):
 import ctypes
 import platform
 
-def dll(name):
+def dll(name = 'pouf'):
     system = platform.system()
     
     extension = '.so'
@@ -111,6 +111,10 @@ def dll(name):
         extension = '.dylib'
 
     prefix = 'lib'
-    return ctypes.CDLL( prefix + name + extension )
+    full =  prefix + name + extension
+
+    print 'loading', full
+
+    return ctypes.CDLL( full )
 
 
