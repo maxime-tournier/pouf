@@ -18,17 +18,14 @@ set(HEADER_FILES
 
 	linearsolver/pgs.h
 	linearsolver/jacobi.h
-#	linearsolver/qp.h
-	
-#   adaptive/manager.h
-	
+
 	mapping/RigidMultiMapping.h
 
 	thread/pool.h
 
 	math/anderson.h
 	math/nlnscg.h
-	
+
 	)
 
 set(SOURCE_FILES
@@ -47,37 +44,21 @@ set(SOURCE_FILES
 	linearsolver/pgs.cpp
 	linearsolver/jacobi.cpp
 	
-#	linearsolver/qp.cpp
-
-#	adaptive/manager.cpp
-
 	mapping/RigidMultiMapping.cpp
 
 	math/anderson.cpp
 	math/nlnscg.cpp
+   )
 
-# test/dependency.cpp
-	)
 
 set(README_FILES
 	README.md
 	)
 
-
 if(NOT MSVC)
   AddCompilerDefinitions("SOFA_HAVE_STD_THREAD")
   list(APPEND HEADER_FILES thread/worker.h)
   list(APPEND SOURCE_FILES thread/worker.cpp)
-endif()
-
-if(APPLE)
-  find_package(OpenGL REQUIRED)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -framework OpenGL")
-  list(APPEND SOURCE_FILES tool/gl.cpp)
-endif()
-  
-if(SOFA-LIB_GUI_QGLVIEWER)
-	list(APPEND SOURCE_FILES tool/python.cpp)
 endif()
 
 
