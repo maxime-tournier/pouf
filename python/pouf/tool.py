@@ -10,10 +10,10 @@ def concat(x):
 
 
 # insert ground mesh into a node
-def ground(node, position = None, scale = [1, 1, 1] ):
+def ground(node, position = None, scale = [1, 1, 1], mesh = 'ground' ):
 
     res = rigid.Body('ground')
-    res.visual = path() + '/share/mesh/ground.obj'
+    res.visual = path() + '/share/mesh/{}.obj'.format(mesh)
     res.collision = res.visual
     res.dofs.translation = [0, -1.1, 0]
     res.scale = scale
