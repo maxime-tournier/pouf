@@ -269,7 +269,7 @@ class Balance:
         self.dt = dt
         
         if len(self.active) > 0:
-            self.centroid = centroid( [ self.active[i][0] for i in self.polygon ] )
+            self.centroid = centroid( self.hull() )
         else:
             self.centroid = None
             return
@@ -289,3 +289,29 @@ class Balance:
     # list of vertices
     def hull(self):
         return [ self.active[i][0] for i in self.polygon ]
+
+    def static_stable(self, threshold = 0.8):
+
+        h = self.hull()
+        c = self.centroid
+
+        def norm(x): return math.sqrt( x.dot(x) )
+
+        dist = []
+        
+        for start, end in zip(h[:-1], h[1:]):
+            delta = (end - start)[0:3:2]
+            local = (c - start)[0:3:2]
+
+            proj = (delta / norm(delta)).dot(local)
+
+            di = math.sqrt( local.dot(local) - proj * proj )
+            
+            dist.append(di)
+
+        d = sorted( dist )[0]
+            
+        return len(h) >= 3 and norm( (c - self.com)[0:3:2] ) < threshold * d;
+        
+
+        

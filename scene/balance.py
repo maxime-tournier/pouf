@@ -390,7 +390,7 @@ def createScene(node):
                             anderson = 4,
                             iterations = 150,
                             threads = 4,
-                            newmark = False,
+                            newmark = True,
                             precision = 0,
                             omega = 1 )
 
