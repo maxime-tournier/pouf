@@ -33,26 +33,42 @@ void eigen_cast(const BaseMatrix* m,
 namespace impl {
 template<class EigenMatrix>
 struct op_prod {
-	EigenMatrix& result;
-	const EigenMatrix& rhs;
-	
-	template<class M>
-	void operator()(const M& m) const {
-		result += m * rhs;
-	}
+  EigenMatrix& result;
+  const EigenMatrix& rhs;
+
+  op_prod(EigenMatrix& result,
+		  const EigenMatrix& rhs)
+	: result(result),
+	  rhs(rhs) {
+
+  }
+  
+  template<class M>
+  void operator()(const M& m) const {
+	result += m * rhs;
+  }
 
 };
 
 
 template<class EigenMatrix>
 struct op_scal {
-	EigenMatrix& result;
-	const typename EigenMatrix::Scalar lambda;
-	
-	template<class M>
-	void operator()(const M& m) const {
-		result += lambda * m;
-	}
+  
+  EigenMatrix& result;
+  typedef typename EigenMatrix::Scalar lambda_type;
+  const lambda_type lambda;
+
+  op_scal(EigenMatrix& result,
+		  const lambda_type& lambda)
+	: result(result),
+	  lambda(lambda) {
+
+  }
+  
+  template<class M>
+  void operator()(const M& m) const {
+	result += lambda * m;
+  }
 
 };
 
@@ -65,7 +81,7 @@ void peq_mult(EigenMatrix& result,
 			  const BaseMatrix* lhs,
 			  const EigenMatrix& rhs) {
 	typedef typename EigenMatrix::Scalar real;
-	eigen_cast<real>(lhs, impl::op_prod<EigenMatrix>{result, rhs} );
+	eigen_cast<real>(lhs, impl::op_prod<EigenMatrix>(result, rhs) );
 }
 
 
@@ -76,9 +92,8 @@ void peq_mult(EigenMatrix& result,
 			  typename EigenMatrix::Scalar lambda,
 			  const BaseMatrix* rhs) {
 
-
 	typedef typename EigenMatrix::Scalar real;
-	eigen_cast<real>(rhs, impl::op_scal<EigenMatrix>{result, lambda} );
+	eigen_cast<real>(rhs, impl::op_scal<EigenMatrix>(result, lambda) );
 }
 
 
