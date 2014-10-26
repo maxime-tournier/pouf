@@ -18,8 +18,8 @@ int pgsClass = sofa::core::RegisterObject("pgs")
 
 static thread::pool pool(2);
 
-
-static void response_solve(const sofa::component::linearsolver::Response& response,
+typedef sofa::component::linearsolver::Response response_type;
+static void response_solve(const response_type& response,
 						   sofa::component::linearsolver::AssembledSystem::cmat& res,
 						   const sofa::component::linearsolver::AssembledSystem::rmat& rhs) {
   scoped::timer timer("response computation");

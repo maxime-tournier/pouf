@@ -21,8 +21,10 @@ int jacobiClass = sofa::core::RegisterObject("jacobi")
   .addAlias("pouf.jacobi");
 
 
+typedef sofa::component::linearsolver::Response response_type;
+
 static void response_solve(thread::pool& pool,
-						   const sofa::component::linearsolver::Response& response,
+						   const response_type& response,
 						   sofa::component::linearsolver::AssembledSystem::cmat& res,
 						   const sofa::component::linearsolver::AssembledSystem::rmat& rhs) {
   scoped::timer timer("response computation");
