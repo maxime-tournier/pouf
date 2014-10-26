@@ -264,16 +264,38 @@ class Constraint:
                                          template = 'Vec1d',
                                          compliance = concat( self.compliance * np.ones(rows) ),
                                          damping = concat( self.damping * np.ones(rows)))
+
+        self.pysofa = False
+        if not self.pysofa: return
+
+        import pysofa
+        from pysofa import core
+
+        self.map = pysofa.core.sofa_object( self.map ).cast()
+        self.ff = pysofa.core.sofa_object( self.ff ).cast()
         
     def update(self):
-        self.map.matrix = concat( self.matrix.reshape(self.matrix.size).tolist() )
-        self.map.value = concat( -self.value )
-        self.map.init()
 
-        self.ff.compliance = concat( self.compliance * np.ones(self.rows) )
-        self.ff.damping = concat( self.damping * np.ones(self.rows))
-        self.ff.init()
+        if self.pysofa:
+            self.map.matrix << self.matrix
+            self.map.value << -self.value
+            self.map.init()
 
+            self.ff.compliance << (self.compliance * np.ones(self.rows))
+            self.ff.damping << (self.damping * np.ones(self.rows))
+
+            
+            
+            self.ff.init()
+        else:
+            self.map.matrix = concat( self.matrix.reshape(self.matrix.size).tolist() )
+            self.map.value = concat( -self.value )
+            self.map.init()
+
+            self.ff.compliance = concat( self.compliance * np.ones(self.rows) )
+            self.ff.damping = concat( self.damping * np.ones(self.rows))
+            self.ff.init()
+            
 
     def enable(self, value):
         self.node.activated = value
