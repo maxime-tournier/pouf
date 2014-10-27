@@ -417,9 +417,11 @@ def createScene(node):
 
 
     am = control.Constraint('am-control', node, dofs, 3)
+    am.pysofa = True
     # am.ff.isCompliance = False
 
     com = control.Constraint('com-feet-proj-control', node, dofs, 2)
+    com.pysofa = True
     # com.ff.isCompliance = False
     
     gui = Gui(robot.inner_dofs)

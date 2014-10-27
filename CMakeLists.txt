@@ -1,6 +1,6 @@
 include(${SOFA_CMAKE_DIR}/preProject.cmake)
 
-if(NOT WIN32)
+if(NOT MSVC)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 endif()
 
@@ -56,6 +56,8 @@ set(README_FILES
 	)
 
 if(NOT MSVC)
+  AddCompilerDefinitions("SOFA_HAVE_VARIADIC_TEMPLATES")
+
   AddCompilerDefinitions("SOFA_HAVE_STD_THREAD")
   list(APPEND HEADER_FILES thread/worker.h)
   list(APPEND SOURCE_FILES thread/worker.cpp)

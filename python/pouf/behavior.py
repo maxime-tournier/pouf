@@ -2,13 +2,14 @@
 release = 'release'
 available = 'available'
 
-
+# produce a default available response when no response is produced 
 def adapt(response, request):
     if not response:
         return {resource: available for resource in request}
     return response
 
 
+# 
 def parallel(*args):
     args = [ x for x in args]
     

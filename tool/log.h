@@ -10,11 +10,20 @@ namespace tool {
 	std::cout << h << std::endl;
   }
 
+  // stupid VS2012...
+#ifdef SOFA_HAVE_VARIADIC_TEMPLATES
   template<class H, class ... T>
   void log(const H& h, const T&...t) {
 	std::cout << h << '\t';
 	log(t...);
   }
+#else
+  template<class H, class T>
+  void log(const H& h, const T& t) {
+	std::cout << h << '\t';
+	log(t);
+  }
+#endif
   
 }
 
