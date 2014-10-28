@@ -7,7 +7,7 @@
 #include "../init.h"
 
 // a more cache-friendly sequential solver
-class pgs : public sofa::component::linearsolver::SequentialSolver {
+class SOFA_pouf_API pgs : public sofa::component::linearsolver::SequentialSolver {
 
 public:
 

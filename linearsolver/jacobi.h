@@ -9,7 +9,7 @@
 #include "../init.h"
 
 // a more cache-friendly sequential solver
-class jacobi : public sofa::component::linearsolver::SequentialSolver {
+class SOFA_pouf_API jacobi : public sofa::component::linearsolver::SequentialSolver {
 
 public:
 

@@ -13,7 +13,7 @@ namespace sofa {
 
 	  // RigidMapping from multiple source dofs
 	  template <class TIn, class TOut >
-	  class RigidMultiMapping : public AssembledMultiMapping<TIn, TOut> {
+	  class SOFA_pouf_API RigidMultiMapping : public AssembledMultiMapping<TIn, TOut> {
 		public:
 		SOFA_CLASS(SOFA_TEMPLATE2(RigidMultiMapping,TIn,TOut), 
 				   SOFA_TEMPLATE2(AssembledMultiMapping,TIn,TOut));
