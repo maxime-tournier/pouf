@@ -11,6 +11,8 @@ class SOFA_pouf_API pgs : public sofa::component::linearsolver::SequentialSolver
 
 public:
 
+  SOFA_CLASS(pgs, sofa::component::linearsolver::SequentialSolver);
+  
   virtual void factor(const system_type& system);
 
   pgs();

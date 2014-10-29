@@ -13,6 +13,8 @@ class SOFA_pouf_API jacobi : public sofa::component::linearsolver::SequentialSol
 
 public:
 
+  SOFA_CLASS(jacobi, sofa::component::linearsolver::SequentialSolver);
+
   virtual void factor(const system_type& system);
 
   jacobi();

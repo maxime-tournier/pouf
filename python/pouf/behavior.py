@@ -1,98 +1,89 @@
 
-release = 'release'
-available = 'available'
+import itertools
 
-# produce a default available response when no response is produced 
-def adapt(response, request):
-    if not response:
-        return {resource: available for resource in request}
-    return response
+seq = itertools.chain
+par = itertools.izip_longest
 
 
-# 
-def parallel(*args):
-    args = [ x for x in args]
+memory = {}        
+
+# iterates gen( memory[what] ) whenever available. you probably want
+# memory[what] to be a mutable structure
+def requires(what, gen):
+    g = memory
+    while True:
+        if what in g:
+            for x in gen(g[what]):
+                yield x
+                if what not in g:
+                    break
+            
+        yield
+
+# put non-None results from gen into memory[what]. you probably want
+# to yield a mutable structure from gen
+def results(what, gen):
+    g = memory
+    for x in gen:
+        if x: g[what] = x
+        elif what in g: del g[what]
+        yield x
+
+
+# convenience class for using requires/results
+class Variable:
+
+    def __rlshift__(self, gen):
+        return requires(self, gen)
+
+
+    def __rrshift__(self, gen):
+        return results(self, gen)
+
+
+
+# concurrent access
+locked = {}
+priority = {}
+
+import bisect
+
+class Cleanup: pass
     
-    # merge requests by priority in lhs
-    def merge(x, y):
-        if not y: return
 
-        for k in y:
-            yk = y[k]
-            xk = x[k] if k in x else None
+# wraps the generator f(*args) for concurrent access to 'resource'
+# with priority 'p'
+def lock(resource, p, f):
 
-            if not xk or xk < yk: x[k] = yk
+    def res(*args):
+        self = f(*args)
 
+        if resource not in priority: priority[resource] = []
 
-    # initial response is None
-    resp = {gen: None for gen in args }
-    
-    # nobody holds anything
-    holder = {}
+        bisect.insort(priority[resource], p)
 
-    while args:
-        req = {}
-        request = {}
-
-        current = None
-        to_remove = []
-        
-        for gen in args:
-            current = gen
-            # print 'current', gen
-            try:
-                req[gen] = gen.send( resp[gen] ) or {}
-                merge(request, req[gen] )
-            except StopIteration:
-                to_remove.append( current )
-                # print current, 'stopped'
-
-        for x in to_remove: args.remove(x)
-
-        if not args: raise StopIteration
-    
-        # transmit request upwards and wait for response
-        response = yield request
-        response = adapt(response, request)
-        
-        holder = {}
-        
-        # update who holds what: permission was granted and resource
-        # still requested
-        for gen in req:
-            for resource in req[gen]:
-                if resp[gen] and resource in resp[gen] and resp[gen][resource]:
-                    holder[resource] = gen
-        
-        # build per generator response
-        resp = {}
-
-        for gen in args:
-
-            resp[gen] = {}
-            for resource in req[gen]:
-
-                have_priority = request[resource] <= req[gen][resource]
-                have_access = resource not in holder or holder[resource] is gen
-                was_holder = resource in holder and holder[resource] is gen
-                
-                r = None
-
-                global release
-                
-                if was_holder and not have_priority: r = release
-                if have_priority and have_access: r = response[resource]
-
-                resp[gen][resource] = r 
-
-# sequence
-def sequence(*args):
-    for gen in args:
-        response = None
         try:
             while True:
-                request = gen.send( response )
-                response = yield request
-                response = adapt(response, request)
-        except StopIteration:
-            pass
+
+                top = priority[resource][-1]
+
+                if resource not in locked and top == p:
+                    locked[resource] = self
+
+                # i have the lock
+                if resource in locked and locked[resource] == self:
+                    if top == p:
+                        yield self.next()
+                    else:
+                        # cleanup
+                        self.throw( StopIteration )
+                        yield
+                        while self.next(): yield
+                        del locked[resource]
+                else:
+                    yield
+        finally:
+            priority[resource].remove( p )
+            if resource in locked: del locked[resource]
+            
+    return res
