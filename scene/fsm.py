@@ -31,16 +31,17 @@ class Script:
     
 
 # state machine definition (see control.FSM)
-class StateGraph:
+class StateGraph(pouf.control.FSM):
 
     def __init__(self, servo, root):
-
+        pouf.control.FSM.__init__(self)
+        
         # these 3 are needed by FSM (states, transitions, start)
         self.states = ['start', 'high', 'low' ]
         self.transitions = [ ('wait', 'start', 'high'),
                              ('wait', 'high', 'low'),
                              ('wait', 'low', 'high') ]
-        self.start = 'start'
+        self.initial = 'start'
 
         # additional init
         self.servo = servo
@@ -75,7 +76,7 @@ def createScene(node):
     scene = pouf.tool.scene( node )
 
     # numerical solver
-    num = node.createObject('SequentialSolver',
+    num = node.createObject('pgs',
                             iterations = 30,
                             precision = 0)
 
@@ -91,7 +92,7 @@ def createScene(node):
     servo = pouf.control.PID(robot)
 
     # state machine
-    fsm = pouf.control.FSM( StateGraph(servo, node) )
+    fsm = StateGraph(servo, node)
     
     # script
     script = Script()

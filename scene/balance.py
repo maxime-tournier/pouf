@@ -4,7 +4,11 @@ import pouf
 from pouf import robot
 from pouf import rigid
 from pouf import joint
+
 from pouf import control
+control.Constraint.pysofa = True
+
+
 from pouf import script
 from pouf import pose
 from pouf import contact
@@ -386,8 +390,8 @@ def createScene(node):
     scene = pouf.tool.scene( node )
 
     num = node.createObject('pouf.jacobi',
-                            # nlnscg = True,
-                            anderson = 4,
+                            nlnscg = True,
+                            # anderson = 4,
                             iterations = 150,
                             threads = 4,
                             newmark = True,
@@ -417,11 +421,11 @@ def createScene(node):
 
 
     am = control.Constraint('am-control', node, dofs, 3)
-    am.pysofa = True
+    # am.pysofa = True
     # am.ff.isCompliance = False
 
     com = control.Constraint('com-feet-proj-control', node, dofs, 2)
-    com.pysofa = True
+    # com.pysofa = True
     # com.ff.isCompliance = False
     
     gui = Gui(robot.inner_dofs)

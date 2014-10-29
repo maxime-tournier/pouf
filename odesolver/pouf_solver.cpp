@@ -7,6 +7,8 @@
 #include <sofa/component/linearsolver/EigenSparseMatrix.h>
 #include <sofa/component/linearsolver/EigenVector.h>
 #include <sofa/core/ObjectFactory.h>
+
+
 #include <sofa/simulation/common/MechanicalOperations.h>
 #include <sofa/simulation/common/VectorOperations.h>
 
@@ -102,12 +104,6 @@ namespace sofa {
 
 
 
-
-	  void pouf_solver::alloc(const core::ExecParams& params) {
-		scoped::timer step("lambdas alloc");
-		sofa::simulation::common::VectorOperations vop( &params, this->getContext() );
-		lagrange.realloc( &vop, false, true );
-	  }
 
 	  pouf_solver::~pouf_solver() {
 	
@@ -432,9 +428,10 @@ namespace sofa {
 
 		  // resize as needed
 		  buffer.resize( std::max<unsigned>(buffer.size(), dim));
+
 		  dofs->copyToBuffer(buffer.data(), lagrange.id().getId( dofs ), dim);
 
-		  // momentum from force
+		  // impulse from force
 		  res.segment(off, dim) = buffer.head(dim) * sys.dt;
 
 		  off += dim;
@@ -537,6 +534,10 @@ namespace sofa {
 		core::MechanicalParams mparams;
 		this->buildMparams( mparams, *params, dt );
 
+		// lambdas
+		sofa::simulation::common::VectorOperations vop( params, this->getContext() );
+		lagrange.realloc( &vop, false, true );
+		
 		// graph
 		tool::mapping_graph graph;
 		graph.set(this->getContext());

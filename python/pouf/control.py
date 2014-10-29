@@ -213,6 +213,8 @@ def broyden(J, u, v, kahan = None):
 # position'. for a velocity constraint, simply set: value = dt * v
 class Constraint:
 
+    pysofa = False
+
     # note: dofs must all have the same type
     
     # note: make sure dofs are well-initilized (position/velocity
@@ -265,8 +267,7 @@ class Constraint:
                                          compliance = concat( self.compliance * np.ones(rows) ),
                                          damping = concat( self.damping * np.ones(rows)))
 
-        self.pysofa = False
-        if not self.pysofa: return
+        if not Constraint.pysofa: return
 
         import pysofa
         from pysofa import core
@@ -276,7 +277,7 @@ class Constraint:
         
     def update(self):
 
-        if self.pysofa:
+        if Constraint.pysofa:
             self.map.matrix << self.matrix
             self.map.value << -self.value
             self.map.init()
@@ -284,8 +285,6 @@ class Constraint:
             self.ff.compliance << (self.compliance * np.ones(self.rows))
             self.ff.damping << (self.damping * np.ones(self.rows))
 
-            
-            
             self.ff.init()
         else:
             self.map.matrix = concat( self.matrix.reshape(self.matrix.size).tolist() )

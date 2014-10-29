@@ -32,7 +32,7 @@ class VectorOperations;
 }
 
 namespace component {
-
+ 
 namespace linearsolver {
 struct AssembledSystem;
 }
@@ -121,15 +121,12 @@ public:
 					  const vec& x,
 					  SReal dt);
 	
-
-	// TODO does this work yo ?
 	// this is for warm start and returning constraint forces
 	core::behavior::MultiVecDeriv lagrange;
 
 protected:
 
-	void alloc(const core::ExecParams& params);
-
+	
 };
 
 }
