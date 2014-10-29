@@ -32,11 +32,11 @@ static int RigidMultiMappingClass = core::RegisterObject("rigid mapping for mult
 ;
 
 #ifndef SOFA_FLOAT
-template class SOFA_Compliant_API RigidMultiMapping<  Rigid3dTypes, Vec3dTypes >;
+template class SOFA_pouf_API RigidMultiMapping<  Rigid3dTypes, Vec3dTypes >;
 #endif
 
 #ifndef SOFA_DOUBLE
-template class SOFA_Compliant_API RigidMultiMapping< Rigid3fTypes, Vec3fTypes >;
+template class SOFA_pouf_API RigidMultiMapping< Rigid3fTypes, Vec3fTypes >;
 
 #endif
 
