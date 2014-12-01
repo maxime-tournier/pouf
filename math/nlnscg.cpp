@@ -15,7 +15,7 @@ namespace math {
 	  const real beta = tmp / grad_norm2;
 	  if( beta <= 1) {
 		
-		// before ? after ? who knows ?
+		// before ? after ? the paper says x first
 		x += beta * p;
 		
 		p = beta * p + dx;
