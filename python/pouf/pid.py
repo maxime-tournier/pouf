@@ -141,8 +141,8 @@ class Implicit:
         self.ff.init()
 
         # update stuff
-        self.p = self.dofs.position
-        self.d = self.dofs.velocity
+        self.p = self.dofs.position[0][0]
+        self.d = self.dofs.velocity[0][0]
 
         # explicit part of the force
         explicit = -self.ki * self.integral
@@ -169,11 +169,11 @@ class Implicit:
         
     # force applied at the end of time step
     def post_force(self):
-        v =  self.dofs.velocity
-        p = self.dofs.position
+        v =  self.dofs.velocity[0][0]
+        p = self.dofs.position[0][0]
         
         # elastic =  - self.kp * self.p
-        elastic = self.dofs.force
+        elastic = self.dofs.force[0][0]
         damping = - self.kd * v
         explicit = self.get_force()
 
