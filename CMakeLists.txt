@@ -57,6 +57,10 @@ set(README_FILES
 
 if(NOT MSVC)
   AddCompilerDefinitions("SOFA_HAVE_VARIADIC_TEMPLATES")
+endif()
+
+if(APPLE)
+
 
   AddCompilerDefinitions("SOFA_HAVE_STD_THREAD")
   list(APPEND HEADER_FILES thread/worker.h)
@@ -76,6 +80,6 @@ AddLinkerDependencies(SofaGuiQt Compliant)
 
 include(${SOFA_CMAKE_DIR}/postProject.cmake)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0 -g")
-remove_definitions(-DNDEBUG )
+# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0 -g")
+# remove_definitions(-DNDEBUG )
 
