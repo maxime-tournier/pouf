@@ -8,7 +8,6 @@
 
 #include <tool/lcp.h>
 
-#include <thread/pool.h>
 
 // SOFA_DECL_CLASS(SequentialSolver);
 int pgsClass = sofa::core::RegisterObject("pgs")
@@ -16,10 +15,11 @@ int pgsClass = sofa::core::RegisterObject("pgs")
   .addAlias("pouf.pgs");
 
 
-static thread::pool pool(2);
+
 
 typedef sofa::component::linearsolver::Response response_type;
-static void response_solve(const response_type& response,
+static void response_solve(thread::pool& pool,
+						   const response_type& response,
 						   sofa::component::linearsolver::AssembledSystem::cmat& res,
 						   const sofa::component::linearsolver::AssembledSystem::rmat& rhs) {
   scoped::timer timer("response computation");
@@ -102,7 +102,7 @@ void pgs::factor(const system_type& system) {
   cmat tmp; tmp.resize( mapping_response.rows(),
 						mapping_response.cols());
 
-  response_solve(*response, tmp, JP);
+  response_solve(pool, *response, tmp, JP);
   mapping_response = system.P * tmp;
 
   // diagonal
@@ -188,6 +188,12 @@ void pgs::solve_block(chunk_type result, const inverse_type& inv, chunk_type rhs
 
 }
 
+void pgs::reset() {
+  SequentialSolver::reset();
+  const int n = threads.getValue();
+  pool = thread::pool( std::max<int>(0, n - 1) );
+
+}
 
 
 void pgs::solve_impl(vec& res,
@@ -454,6 +460,7 @@ pgs::pgs()
   : nlnscg(initData(&nlnscg, false, "nlnscg", "non-smooth non-linear cg")),
 	accel(initData(&accel, unsigned(0), "anderson", "anderson acceleration")),
 	log(initData(&log, false, "log", "log convergence history")),
+	threads(initData(&threads, unsigned(1), "threads", "number of additional concurrent threads")),
 	convergence(initData(&convergence, "convergence", "convergence history (read-only)")),
 	filename(initData(&filename, "filename", "dump lcp data to filename"))
 {

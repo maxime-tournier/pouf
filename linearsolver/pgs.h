@@ -3,6 +3,7 @@
 
 #include <numericalsolver/SequentialSolver.h>
 #include <numericalsolver/Response.h>
+#include <thread/pool.h>
 
 #include "../init.h"
 
@@ -27,8 +28,12 @@ public:
 			   const vec& rhs,
 			   real damping ) const;
 
+  void reset();
+
 protected:
 
+  thread::pool pool;
+  
   virtual void solve_block(chunk_type result,
 						   const inverse_type& inv,
 						   chunk_type rhs) const;
@@ -51,6 +56,8 @@ protected:
   // contiguous data for inverses
   vec inverse_storage;
   std::vector<unsigned> offsets;
+
+  sofa::Data<unsigned> threads;
 
   vec diagonal;
 
