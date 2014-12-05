@@ -58,7 +58,8 @@ protected:
   std::vector<unsigned> offsets;
 
   sofa::Data<unsigned> threads;
-
+  sofa::Data<bool> homogenize;
+  
   vec diagonal;
 
   sofa::Data<bool> log;

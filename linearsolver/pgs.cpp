@@ -6,6 +6,8 @@
 #include <Compliant/utils/schur.h>
 #include <Compliant/utils/nan.h>
 
+#include <Compliant/constraint/CoulombConstraint.h>
+
 #include <tool/lcp.h>
 
 
@@ -123,8 +125,6 @@ void pgs::factor(const system_type& system) {
 	  // fill constraint block
 	  view = tmp.triangularView<Eigen::Upper>();
 
-	  unsigned diag_off = b.offset;
-	  
 	  // add diagonal C block
 	  for( unsigned r = 0; r < b.size; ++r) {
 		for(system_type::mat::InnerIterator it(system.C, b.offset + r); it; ++it) {
@@ -136,10 +136,25 @@ void pgs::factor(const system_type& system) {
 		  view(r, it.col() - int(b.offset)) += it.value();
 		}
 
-		diagonal(diag_off) = view(r, r);
-		++diag_off;
 	  }
 
+
+	  if( homogenize.getValue() and
+		  b.projector and 
+		  typeid(*b.projector) == typeid(sofa::component::linearsolver::CoulombConstraint) ) {
+		math::vec3 tmp;
+
+		// can't do it directly, we need a temporary. this is a bug in
+		// eigen.
+		tmp = view.diagonal();
+		view = tmp.asDiagonal();
+		
+		const real value = view.diagonal().segment<2>(1).maxCoeff();
+		view.diagonal().segment<2>(1).setConstant( value );
+	  }
+
+	  diagonal.segment(b.offset, b.size) = view.diagonal();
+	  
 	  inverse_type inv( view.selfadjointView<Eigen::Upper>() );
 	  view = inv.solve( dense_matrix::Identity( b.size, b.size ) );
 	}	
@@ -166,7 +181,7 @@ static pgs::real track(const pgs::vec& prev,
 	  if( delta(i) ) {
 		const pgs::real value = - prev(i) / delta(i);
 
-		if( value >= epsilon && value < alpha ) {
+		if( value >= epsilon and value < alpha ) {
 		  alpha = value;
 		  if( index ) *index = i;
 		}
@@ -402,7 +417,7 @@ void pgs::solve_impl(vec& res,
 		grad_norm2 = grad.squaredNorm();
 
 		// conjugation
-		if( k > 0 && grad_norm2_prev) {
+		if( k > 0 and grad_norm2_prev) {
 			
 		  assert( grad_norm2_prev > std::numeric_limits<real>::epsilon() );
 		  const real beta = grad_norm2 / grad_norm2_prev;
@@ -461,6 +476,7 @@ pgs::pgs()
 	accel(initData(&accel, unsigned(0), "anderson", "anderson acceleration")),
 	log(initData(&log, false, "log", "log convergence history")),
 	threads(initData(&threads, unsigned(1), "threads", "number of additional concurrent threads")),
+	homogenize(initData(&homogenize, true, "homogenize", "homogenize tangent directions")),
 	convergence(initData(&convergence, "convergence", "convergence history (read-only)")),
 	filename(initData(&filename, "filename", "dump lcp data to filename"))
 {
