@@ -1,5 +1,6 @@
 #include "pouf_solver.h"
 
+#include <tool/here.h>
 
 // this is for propagate_visitor
 // #include <odesolver/AssembledSolver.h>
@@ -33,6 +34,18 @@ namespace sofa {
 
 	  SOFA_DECL_CLASS(pouf_solver);
 
+	  static const bool nan_hunt = false;
+
+	  template<class X>
+	  static inline void nan_check(const X& x, const char* msg) {
+		if( nan_hunt and has_nan(x) ) {
+		  std::cout << msg << std::endl;
+		  throw std::logic_error( msg );
+		}
+	  }
+
+
+	  
 	  int pouf_solverClass = core::RegisterObject("Example compliance solver using assembly")
 		.add< pouf_solver >()
 		.addAlias("pouf.solver");
@@ -294,7 +307,8 @@ namespace sofa {
 	  static void prepare_geometric_stiffness(const tool::graph_vector& state,
 											  const tool::mapping_graph& graph,
 											  const vec& forces) {
-
+		scoped::timer step("geometric stiffness");
+		
 		// fill force vector
 		for(unsigned i = 0, n = boost::num_vertices(graph); i < n; ++i) {
 		  graph[i].mstate->copyFromBuffer(core::VecDerivId::force(),
@@ -345,7 +359,8 @@ namespace sofa {
 		  off += dim;
 		}
 		assert( off == sys.size() );
-		
+
+		nan_check(res, HERE);
 	  }
 
 	  void pouf_solver::rhs_correction(vec& res, const system_type& sys) const {
@@ -379,6 +394,7 @@ namespace sofa {
 		  off += dim;
 		}
 
+		nan_check( res, HERE );
 	  }
 
 
@@ -404,7 +420,7 @@ namespace sofa {
 
 
 	  void pouf_solver::get_state(vec& res, const system_type& sys) const {
-
+		// scoped::timer step("get_state");
 		assert( res.size() == sys.size() );
 
 		unsigned off = 0;
@@ -529,18 +545,30 @@ namespace sofa {
 							  core::MultiVecCoordId posId,
 							  core::MultiVecDerivId velId) {
 		assert(kkt);
-
+		scoped::timer step("odesolver solve");
+		
 		// mechanical parameters
 		core::MechanicalParams mparams;
 		this->buildMparams( mparams, *params, dt );
 
-		// lambdas
-		sofa::simulation::common::VectorOperations vop( params, this->getContext() );
-		lagrange.realloc( &vop, false, true );
-		
 		// graph
 		tool::mapping_graph graph;
 		graph.set(this->getContext());
+
+			// lambdas
+		{
+		  scoped::timer step("realloc");
+		  sofa::simulation::common::VectorOperations vop( params, this->getContext() );
+
+		  if( lagrange.id().isNull() ) {
+			lagrange.realloc( &vop, false, true );
+		  }
+
+		  for(unsigned i = 0, n = boost::num_vertices(graph); i < n; ++i) {
+			graph[i].mstate->vRealloc(&mparams, lagrange.id().getId(graph[i].mstate));
+		  }
+
+		}
 
 		const tool::graph_vector state(graph);
 
@@ -568,6 +596,8 @@ namespace sofa {
 		vec x = vec::Zero(sys.size());
 		vec rhs = vec::Zero(sys.size());
 
+		vec corr = vec::Zero(sys.size());
+		
 		// ready to solve yo
 		{
 		  scoped::timer step("system solve");
@@ -580,7 +610,7 @@ namespace sofa {
 			rhs_correction(rhs, sys);
 				
 			kkt->correct(x, sys, rhs, stabilization_damping.getValue() );
-			assert( !has_nan(x) );
+			nan_check(x, HERE);
 			
 			if( debug.getValue() ) {
 			  std::cerr << "correction rhs:" << std::endl
@@ -589,8 +619,9 @@ namespace sofa {
 						<< x.transpose() << std::endl;
 			}
 
-			set_vel(sys, x.head(sys.m));
-			integrate( &mparams, posId, velId );
+			// set_vel(sys, x.head(sys.m));
+			// integrate( &mparams, posId, velId );
+			corr = x.head(sys.m);
 		  }
 
 		  // actual dynamics
@@ -602,7 +633,7 @@ namespace sofa {
 			rhs_dynamics(rhs, sys, ck);
 
 			kkt->solve(x, sys, rhs);
-			assert( !has_nan(x) );
+			nan_check(x, HERE);
 			
 			if( debug.getValue() ) {
 			  std::cerr << "dynamics rhs:" << std::endl
@@ -611,12 +642,15 @@ namespace sofa {
 						<< x.transpose() << std::endl;
 			}
 
-			update_scene(state, graph, x, dt);
-
+			
 			if( integration.getValue() ) {
+			  corr += x.head(sys.m);
+			  set_vel(sys, corr);
 			  integrate( &mparams, posId, velId );
 			}
 
+			update_scene(state, graph, x, dt);
+			
 		  }
 
 		}
