@@ -36,6 +36,11 @@ Save, then run `make`.
 Usage
 -----
 
+*IMPORTANT* you must start sofa with the DAG graph option:
+
+`bin/ruSofa -s dag`
+
+
 Have a look in the `scene` directory: it contains various example
 scenes for the following features:
 
