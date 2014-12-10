@@ -36,7 +36,7 @@ Save, then run `make`.
 Usage
 -----
 
-*IMPORTANT* you must start sofa with the DAG graph option:
+**IMPORTANT:** you must start sofa with the DAG graph option:
 
 `bin/ruSofa -s dag`
 
