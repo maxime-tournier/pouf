@@ -36,9 +36,10 @@ Save, then run `make`.
 Usage
 -----
 
-**IMPORTANT:** you must start sofa with the DAG graph option:
+**IMPORTANT:** you must start sofa with the DAG graph option or you'll
+  get a nice segfault when running the examples:
 
-`bin/ruSofa -s dag`
+`$ bin/runSofa -s dag`
 
 
 Have a look in the `scene` directory: it contains various example
