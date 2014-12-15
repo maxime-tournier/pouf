@@ -63,7 +63,7 @@ class Script:
 def createScene(node):
     scene = pouf.tool.scene( node )
     
-    num = node.createObject('SequentialSolver',
+    num = node.createObject('pouf.pgs',
                             iterations = 30,
                             precision = 0)
 
