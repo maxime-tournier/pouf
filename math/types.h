@@ -6,7 +6,9 @@
 namespace math {
 
   typedef double real;
+  
   typedef Eigen::Matrix<real, Eigen::Dynamic, 1> vec;
+  typedef Eigen::Matrix<real, 3, 1> vec3;
 
 }
 
