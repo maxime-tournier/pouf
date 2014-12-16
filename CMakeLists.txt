@@ -20,7 +20,8 @@ set(HEADER_FILES
 	linearsolver/jacobi.h
 
 	mapping/RigidMultiMapping.h
-
+	mapping/LocalFrameMapping.h
+	
 	thread/pool.h
 
 	math/anderson.h
@@ -45,7 +46,8 @@ set(SOURCE_FILES
 	linearsolver/jacobi.cpp
 	
 	mapping/RigidMultiMapping.cpp
-
+	mapping/LocalFrameMapping.cpp
+	
 	math/anderson.cpp
 	math/nlnscg.cpp
    )
