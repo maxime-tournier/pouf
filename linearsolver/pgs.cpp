@@ -10,6 +10,9 @@
 
 #include <tool/lcp.h>
 
+#include <math/anderson.h>
+#include <math/nlnscg.h>
+
 
 // SOFA_DECL_CLASS(SequentialSolver);
 int pgsClass = sofa::core::RegisterObject("pgs")
@@ -248,43 +251,7 @@ void pgs::solve_impl(vec& res,
 	// lcp rhs 
 	vec constant = rhs.tail(sys.n) - JP * res.head( sys.m );
 
-	// dumps lcp if needed
-	if(!filename.getValue().empty() ) {
-	  ::schur<response_type> M(sys, *response);
-	
-	  std::string name = filename.getValue();
-	  if( correct ) {
-		name += ".correction";
-	  } else {
-		name += ".dynamics";
-	  }
-	  
-	  tool::write_lcp(name, M, -constant);
-
-	  // tonge stuff
-	  
-	  // mass-splitting prec: we count non-zeros in mapping_response
-	  // rows
-	  vec prec = vec::Zero(sys.m);
-	  
-	  for (int k=0; k< mapping_response.outerSize(); ++k) {
-		for (cmat::InnerIterator it(mapping_response,k); it; ++it) {
-		  prec( it.row() ) += 1;
-		}
-	  }
-	  
-	  // prec has the number of non-zero elements in each column of JP
-	  vec d = vec::Zero(sys.n);
-
-	  for(unsigned i = 0; i < sys.n; ++i) {
-		d(i) = JP.row(i).dot(prec.asDiagonal() * mapping_response.col(i) );
-	  }
-
-	  std::ofstream out(name + ".tonge");
-	  tool::write_vec(out, d);
-	}
-	
-	// lcp error
+	// lcp error (work vector)
 	vec error = vec::Zero( sys.n );
 	
 	const real epsilon = relative.getValue() ? 
@@ -301,154 +268,84 @@ void pgs::solve_impl(vec& res,
 	
 	vec primal;
 
-	// nlnscg
-	vec lambda_prev, grad_prev, p, grad;
-	vec net_prev, Ng, Np;
-	real grad_norm2 = 0;
+	vec lambda_prev;
 
-	// accel
-	dense_matrix G, F, K, NG;
-	vec delta2, u, diff, mask, next;
-	
-	const unsigned acc = accel.getValue();
-	
-	if( acc ) {
-	  unsigned dim = acc;
-	  G = dense_matrix::Zero(sys.n, dim);
-	  F = dense_matrix::Zero(sys.n, dim);
-	  K = dense_matrix::Zero(dim, dim);
-	  NG = dense_matrix::Zero(sys.m, dim);
-	  tmp = vec::Zero( dim );
-	}
+	vec f, net_prev, Ng, Np = vec::Zero(sys.m);
 
-	inverse_type inv;
+	// math::anderson_new accel_anderson(sys.n, anderson.getValue());
+	math::nlnscg accel_nlnscg(sys.n);
 
 	unsigned s1 = convergence.getValue().size();
  
 	for(k = 0; k < max; ++k) {
-
+	  
+	  // acceleration
+	  // if( anderson.getValue() ) {
+	  // 	// accel_anderson.step(lambda, primal, diagonal, unilateral_mask);
+	  // }
+	  
 	  lambda_prev = lambda;
 	  net_prev = net;
-	  
+
+	  // net = mapping_response * lambda;
 	  real estimate2 = step( lambda, net, sys, constant, error, delta, correct );
-
-	  if( acc ) {
-		const unsigned index = k % acc;
-
-		if( lambda != lambda_prev ) {
-		  const unsigned prev = (k + acc - 1) % acc;
-
-		  bool skip = false;
-		  bool changed = 0;
-		
-		  // TODO only zero vectors whose mask is not like the last one
-		  if( ((lambda.array() == 0) != (G.col(prev).array() == 0)).any() ) {
-			// G.setZero();
-			// F.setZero();
-			// K.setZero();
-			// NG.setZero();
-			
-			skip = true;
-		  }
-		
-		  G.col(index) = lambda;
-		  NG.col(index) = net;
-
-		  // trick yo
-		  F.col(index) = diagonal.cwiseProduct(lambda - lambda_prev);
-		
-		  tmp.noalias() = F.transpose() * F.col(index);
-		  K.col(index) = tmp;
-		  K.row(index) = tmp.transpose();
-
-		  // just in case
-		  K(index, index) += 1e-14;
-
-		  if(!skip ) {
-			inv.compute( K.selfadjointView<Eigen::Upper>() );
-
-			if( inv.info() == Eigen::Success ) {
-			  tmp.noalias() = inv.solve( vec::Ones(acc) );
-
-			  if( has_nan(tmp ) ) {
-				std::cerr << K << std::endl;
-				std::cerr << "lambda:" << lambda.transpose() << std::endl;
-				std::cerr << "lambda_prev:" << lambda_prev.transpose() << std::endl;
-				std::cerr << "F:" << std::endl
-						  << F << std::endl;
-				
-				throw std::logic_error("derp!");
-			  }
-
-			  const real lambda_inv = tmp.sum();
-
-			  if( lambda_inv ) {
-				tmp /= lambda_inv;
-
-				next.noalias() = G * tmp;
-				diff = next - lambda;
-		
-				// const real alpha = track(lambda, diff);
-				// lambda += alpha * diff;
-				// net = mapping_response * lambda;
-			
-				lambda = next;
-				net.noalias() = NG * tmp;
-			  }
-			  
-			  // std::cout << k << " alpha: " << alpha << std::endl;
-			}
-		  }
-		}
-	  }
-
-
-	
 
 	  
 
 	  if( nlnscg.getValue() ) {
-
-		const real grad_norm2_prev = grad_norm2;
+		f = ( lambda - lambda_prev ).array();
 		
-		grad = -lambda + lambda_prev;
-		Ng = -net + net_prev;
-		
-		grad_norm2 = grad.squaredNorm();
+		const real beta = accel_nlnscg.step(lambda, f, vec::Ones(sys.n));
 
-		// conjugation
-		if( k > 0 and grad_norm2_prev) {
-			
-		  assert( grad_norm2_prev > std::numeric_limits<real>::epsilon() );
-		  const real beta = grad_norm2 / grad_norm2_prev;
-		  
-		  if( beta > 1 ) {
-			// restart
-			p.setZero();
-			Np.setZero();
-			
-		  } else {
-			// conjugation
-			lambda += beta * p;
-			net += beta * Np;
-
-			// net = mapping_response * lambda;
-
-			p = beta * p - grad;
-			Np = beta * Np - Ng;
-		  }
+		if( beta > 1 ) {
+		  Np = vec::Zero(sys.m);
 		} else {
-		  // first iteration
-		  p = -grad;
-		  Np = -Ng;
+		  Ng = net - net_prev;
+		  net += beta * Np;
+		  Np = beta * Np + Ng;
 		}
-		
-		grad_prev.swap(grad);
+
 	  }
 
-	  
+
+	  // if( nlnscg.getValue() ) {
+
+	  // 	const real grad_norm2_prev = grad_norm2;
 		
-	  if( this->bench ) this->bench->lcp(sys, constant, *response, lambda);
+	  // 	grad = -lambda + lambda_prev;
+	  // 	Ng = -net + net_prev;
+		
+	  // 	Grad_norm2 = grad.squaredNorm();
+
+	  // 	// conjugation
+	  // 	if( k > 0 and grad_norm2_prev) {
+			
+	  // 	  assert( grad_norm2_prev > std::numeric_limits<real>::epsilon() );
+	  // 	  const real beta = grad_norm2 / grad_norm2_prev;
+		  
+	  // 	  if( beta > 1 ) {
+	  // 		// restart
+	  // 		p.setZero();
+	  // 		Np.setZero();
+			
+	  // 	  } else {
+	  // 		// conjugation
+	  // 		lambda += beta * p;
+	  // 		net += beta * Np;
+
+	  // 		// net = mapping_response * lambda;
+
+	  // 		p = beta * p - grad;
+	  // 		Np = beta * Np - Ng;
+	  // 	  }
+	  // 	} else {
+	  // 	  // first iteration
+	  // 	  p = -grad;
+	  // 	  Np = -Ng;
+	  // 	}
+		
+	  // 	grad_prev.swap(grad);
+	  // }
 
 	  if( log.getValue() ) {
 		primal = JP * net - constant;

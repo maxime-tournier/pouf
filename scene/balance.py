@@ -389,11 +389,11 @@ def createScene(node):
     
     scene = pouf.tool.scene( node )
 
-    num = node.createObject('pouf.jacobi',
-                            nlnscg = True,
+    num = node.createObject('pouf.pgs',
+                            nlnscg = False,
                             # anderson = 4,
-                            iterations = 150,
-                            threads = 4,
+                            iterations = 30,
+                            threads = 1,
                             newmark = True,
                             precision = 0,
                             omega = 1 )
@@ -434,15 +434,17 @@ def createScene(node):
     gui.am.enabled.setChecked( True )
     gui.com.enabled.setChecked( True )
 
-    c = 2e-4
+    c = 1e-4
+    d = 10
+    
     p = {
         'am' : {
-            'compliance': 4e-4,
-            'damping': 0
+            'compliance': 2 * c,
+            'damping': d / 2
         },
         'com' : {
             'compliance': c ,
-            'damping': 2.0 * (2.0 / math.sqrt( c * robot.mass))
+            'damping': d
         }
     }
 

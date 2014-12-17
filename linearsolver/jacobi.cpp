@@ -11,6 +11,7 @@
 #include <thread/pool.h>
 
 #include <Compliant/constraint/CoulombConstraint.h>
+#include <Compliant/constraint/UnilateralConstraint.h>
 
 #include <math/anderson.h>
 #include <math/nlnscg.h>
@@ -86,6 +87,29 @@ static void parallel_prod(const thread::pool& pool,
 }
 
 
+
+static void parallel_prod(const thread::pool& pool,
+						  jacobi::vec& res,
+						  const jacobi::rmat& mat,
+						  const jacobi::vec& rhs) {
+  const unsigned m = mat.rows();
+  const unsigned n = mat.cols();
+  const unsigned k = pool.size();
+
+  res.resize(mat.rows());
+
+  auto task = [&]( const thread::pool::chunk& c ) {
+	const unsigned dim = c.end - c.start;
+	res.segment(c.start, dim).noalias() = mat.middleRows(c.start, dim) * rhs;
+  };
+  
+  pool.parallel_for(0, m, task);
+  
+}
+
+
+
+
 void jacobi::reset() {
 
   base::reset();
@@ -97,8 +121,6 @@ void jacobi::reset() {
 
 
 void jacobi::factor(const system_type& sys) {
-  scoped::timer timer("system factorization");
-
   if( log.getValue() ) {
     edit(convergence)->clear();
   }
@@ -134,13 +156,15 @@ void jacobi::factor(const system_type& sys) {
   }
 
   diagonal = vec::Zero(sys.n);
+  real_diagonal = vec::Zero(sys.n);
   
   // schur complement
   // TODO parallel
   for(unsigned i = 0; i < sys.n; ++i) {
 	diagonal(i) = JP.row(i).dot(prec.asDiagonal() * mapping_response.col(i) );
+	real_diagonal(i) = JP.row(i).dot( mapping_response.col(i) );
   }
-
+  
   // compliance
   // TODO figure out precise convergence conditions apart from diagonal C
   for(int k = 0; k < sys.C.outerSize(); ++k) {
@@ -154,29 +178,52 @@ void jacobi::factor(const system_type& sys) {
   };
 
 
-  // maximal over-relaxation yo !
-  diagonal /= 2;
+  // over-relaxation yo !
+  diagonal /= omega.getValue();
 
   using namespace sofa::component::linearsolver;
 
 
+  unilateral_mask = vec::Zero(sys.n);
+  friction_mask = vec::Zero(sys.n);  
+
+  for(unsigned i = 0, n = blocks.size(); i < n; ++i) {
+	const block& b = blocks[i];
+
+	if( !b.projector ) continue;
+	const auto& type = typeid( *b.projector );
+
+	if( type == typeid(CoulombConstraint) ) {
+	  unilateral_mask(b.offset) = 1;
+	  friction_mask.segment<2>(b.offset + 1).setOnes();
+	} else if ( type == typeid(UnilateralConstraint) ) {
+	  unilateral_mask.segment(b.offset, b.size).setOnes();
+	} 
+
+  }
+
   // homogenize tangent directions to get anisotropic friction
   if( homogenize.getValue() ) {
 
-	friction_mask = vec::Zero(sys.n);
+
 	
 	for(unsigned i = 0, n = blocks.size(); i < n; ++i) {
 	  const block& b = blocks[i];
 
-	  if( CoulombConstraint* p = dynamic_cast< CoulombConstraint* >(b.projector) ) {
+	  if( !b.projector ) continue;
+	  const auto& friction_constraint = typeid(CoulombConstraint);
+
+	  if( typeid(*b.projector) == friction_constraint ) {
+
+		CoulombConstraint* p = static_cast<CoulombConstraint*>(b.projector);
+
 		const real value = diagonal.segment<2>(b.offset + 1).maxCoeff();
 
 		const real ratio = (3 * p->mu) * std::sqrt(value / diagonal(b.offset) );
 		
 		// std::cout << "friction ratio: " << ratio << std::endl;
-		
 		diagonal.segment<2>(b.offset + 1).setConstant( value );
-		friction_mask.segment<2>(b.offset + 1).setOnes();
+
 	  }
 	  
 	}
@@ -194,6 +241,8 @@ void jacobi::solve_impl(vec& res,
 						bool correct,
 						real damping) const {
   assert( response );
+
+  damping = 0;
 
   // reset bench if needed
   if( this->bench ) {
@@ -220,6 +269,19 @@ void jacobi::solve_impl(vec& res,
   // lcp rhs
   vec constant = rhs.tail(sys.n) - JP * res.head( sys.m );
 
+  if( cb ) {
+	std::cout << "lcp callback, assembling matrix !" << std::endl;
+
+	// assemble M
+	dense_matrix M = JP * mapping_response + sys.C.transpose();
+	vec q = -constant;
+
+	vec d = diagonal * omega.getValue();
+	
+	cb( sys.n, M.data(), q.data(), d.data() );
+  }
+
+  
   vec hack;
   // hack !
   if( newmark.getValue() && !correct && friction_mask.size() ) {
@@ -243,13 +305,23 @@ void jacobi::solve_impl(vec& res,
 
   dense_matrix buffer;
   
-  math::anderson accel_anderson(sys.n, anderson.getValue());
-  math::nlnscg accel_nlnscg;
+  math::anderson_new accel_anderson(sys.n, anderson.getValue());
+  math::nlnscg accel_nlnscg(sys.n);
 
   vec lambda_prev, f = vec::Zero(sys.n);
-  
+
+  real min = 1e42;
+  vec best = lambda;
+
+  vec ones = vec::Ones(sys.n);
+
   const unsigned cv_size = convergence.getValue().size();
   for(k = 0; k < max; ++k) {
+
+	// acceleration
+	if( anderson.getValue() ) {
+	  accel_anderson.step(lambda, primal, diagonal, unilateral_mask);
+	}
 
 	lambda_prev = lambda;
 	
@@ -282,30 +354,29 @@ void jacobi::solve_impl(vec& res,
 		  assert( !has_nan(lambda_chunk.eval()) );
 		}
 
-		
 	  }
 	};
 	pool.parallel_for(0, blocks.size(), project);
 	
-	// acceleration
-	if( anderson.getValue() ) {
-	  f = diagonal.array().sqrt() * ( lambda - lambda_prev ).array();
-	  accel_anderson.step(lambda, lambda, f);
-	}
+	// // acceleration
+	// if( anderson.getValue() ) {
+	//   f = diagonal.array().sqrt() * ( lambda - lambda_prev ).array();
+	//   accel_anderson.step(lambda, lambda, f);
+	// }
 
 	if( nlnscg.getValue() ) {
 	  f = ( lambda - lambda_prev ).array();
-	  accel_nlnscg.step(lambda, f, diagonal);
+	  accel_nlnscg.step(lambda, f, ones);
 	}
 
 
 	// update stuff
-	// TODO parallel
-	// net.noalias() = mapping_response * lambda;
 	parallel_prod(pool, net, mapping_response, lambda, buffer);
-	
-	primal.noalias() = JP * net - constant + sys.C * lambda;
 
+	parallel_prod(pool, primal, JP, net);
+	primal.noalias() += sys.C * lambda - constant;
+
+	
 	// hack
 	if( friction_mask.size() ) {
 	  // primal += 1e-7 * friction_mask.cwiseProduct(lambda);
@@ -320,13 +391,24 @@ void jacobi::solve_impl(vec& res,
 	  edit(convergence)->push_back(error);
 	}
 
-	error = (lambda - lambda_prev).norm();
+	lambda_prev -= lambda;
+
+	if(!log.getValue() ) {
+	  error = lambda_prev.dot( diagonal.cwiseProduct(lambda_prev) );
+	}
+	
+	if( error < min ) {
+	  min = error;
+	  best = lambda;
+	}
+	
 	if( error <= epsilon ) break;
 	
   }
-	
-  res.head( sys.m ) += net;
-  res.tail( sys.n ) = lambda;
+
+  
+  res.head( sys.m ).noalias() += mapping_response * best;
+  res.tail( sys.n ) = best;
 	
   if(log.getValue()){
 	edit(convergence)->push_back(convergence.getValue().size() - cv_size);

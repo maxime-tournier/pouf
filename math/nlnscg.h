@@ -9,9 +9,11 @@ namespace math {
 
 	vec p;
 	real grad_norm2;
+
+	nlnscg(unsigned n);
 	
 	// dx = x - x_old
-	void step(vec& x, const vec& dx, const vec& diag);
+	real step(vec& x, const vec& dx, const vec& diag);
 	
   };
 

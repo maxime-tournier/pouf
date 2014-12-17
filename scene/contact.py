@@ -64,8 +64,9 @@ def createScene(node):
     # numerical solver
     num = node.createObject('pouf.pgs',
                             name = 'num',
-                            iterations = 30,
-                            precision = 0)
+                            iterations = 50,
+                            precision = 0,
+                            nlnscg = True)
     # ground 
     ground = pouf.tool.ground( scene )
 

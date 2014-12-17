@@ -1,8 +1,8 @@
 #ifndef POUF_JACOBI_H
 #define POUF_JACOBI_H
 
-#include <numericalsolver/SequentialSolver.h>
-#include <numericalsolver/Response.h>
+#include <Compliant/numericalsolver/SequentialSolver.h>
+#include <Compliant/numericalsolver/Response.h>
 
 #include <thread/pool.h>
 
@@ -29,7 +29,8 @@ public:
 			   real damping ) const;
 
   typedef sofa::component::linearsolver::SequentialSolver base;
-  typedef base::cmat cmat;
+  typedef system_type::cmat cmat;
+  typedef system_type::rmat rmat;
   typedef base::dense_matrix dense_matrix;
 
   void reset();
@@ -61,6 +62,8 @@ protected:
   // diagonal preconditioner
   vec diagonal;
 
+  vec real_diagonal;
+
   sofa::Data<bool> log;
   mutable sofa::Data<sofa::vector<real> > convergence;
 
@@ -75,6 +78,14 @@ protected:
   
   // hack
   vec friction_mask;
+  vec unilateral_mask;
+  
+ public:
+  // to get informations from python side
+  typedef std::function< void( unsigned n,
+							   const real* M, const real* q,
+							   const real* diag) > solve_cb_type;
+  solve_cb_type cb;
 };
 
 

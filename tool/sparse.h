@@ -8,9 +8,8 @@ namespace tool {
 
 // applies Op on the good cast to an eigen matrix
 template<class U, class BaseMatrix, class Op>
-void eigen_cast(const BaseMatrix* m,
-				const Op& op) {
-
+void eigen_dynamic_cast(const BaseMatrix* m,
+						const Op& op) {
 	typedef sofa::component::linearsolver::EigenBaseSparseMatrix<double> matrixd;
 
     const matrixd* smd = dynamic_cast<const matrixd*> (m);
@@ -30,6 +29,30 @@ void eigen_cast(const BaseMatrix* m,
 	throw std::logic_error("not an eigen matrix");
 }
 
+
+// applies Op on the good cast to an eigen matrix
+template<class U, class BaseMatrix, class Op>
+void eigen_static_cast(const BaseMatrix* m,
+						const Op& op) {
+	typedef sofa::component::linearsolver::EigenBaseSparseMatrix<double> matrixd;
+
+
+    if ( typeid(*m) == typeid(matrixd)) {
+	  op( static_cast<const matrixd*>(m)->compressedMatrix.template cast<U>() );
+		return;		
+	}
+
+    typedef sofa::component::linearsolver::EigenBaseSparseMatrix<float> matrixf;
+
+    if ( typeid(*m) == typeid(matrixf)) {
+	  op( static_cast<const matrixf*>(m)->compressedMatrix.template cast<U>() );
+	  return;
+	}
+
+	throw std::logic_error("not an eigen matrix");
+}
+
+  
 namespace impl {
 template<class EigenMatrix>
 struct op_prod {
@@ -45,7 +68,7 @@ struct op_prod {
   
   template<class M>
   void operator()(const M& m) const {
-	result += m * rhs;
+	result = result + m * rhs;
   }
 
 };
@@ -67,7 +90,7 @@ struct op_scal {
   
   template<class M>
   void operator()(const M& m) const {
-	result += lambda * m;
+	result = result + lambda * m;
   }
 
 };
@@ -81,7 +104,7 @@ void peq_mult(EigenMatrix& result,
 			  const BaseMatrix* lhs,
 			  const EigenMatrix& rhs) {
 	typedef typename EigenMatrix::Scalar real;
-	eigen_cast<real>(lhs, impl::op_prod<EigenMatrix>(result, rhs) );
+	eigen_dynamic_cast<real>(lhs, impl::op_prod<EigenMatrix>(result, rhs) );
 }
 
 
@@ -93,7 +116,7 @@ void peq_mult(EigenMatrix& result,
 			  const BaseMatrix* rhs) {
 
 	typedef typename EigenMatrix::Scalar real;
-	eigen_cast<real>(rhs, impl::op_scal<EigenMatrix>(result, lambda) );
+	eigen_dynamic_cast<real>(rhs, impl::op_scal<EigenMatrix>(result, lambda) );
 }
 
 
