@@ -8,7 +8,7 @@ import math
 
 
 # active point/force list, given a sofa node (created from pouf)
-def active(ground):
+def active( ground ):
     collision = ground.getChild('user').getChild('collision')
     
     res = []
@@ -239,12 +239,12 @@ class Balance:
         
         gl.color([0.6, 0.6, 0.6])
         gl.line_width(4)
-        if self.am != None and self.com != None:
+        if self.am is not None and self.com is not None:
             gl.line( self.com, self.com + scale * 10 * self.am )
         
         gl.color([1., 1., 1.])
         gl.point_size(5.0)
-        if self.com != None:
+        if self.com is not None:
             gl.points( self.com )
 
         gl.lighting( True )

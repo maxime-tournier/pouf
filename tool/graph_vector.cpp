@@ -5,6 +5,7 @@
 #include <sofa/simulation/common/Node.h>
 
 #include <tool/log.h>
+#include <utils/scoped.h>
 
 namespace tool {
 
@@ -65,6 +66,7 @@ graph_vector::graph_vector(const mapping_graph& graph)
 	: master(*this),
 	  compliant(*this)
 {
+  // scoped::timer step("graph vector init");
 	const unsigned n = boost::num_vertices(graph);
 
 	master.vertex.reserve( n );

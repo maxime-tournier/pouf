@@ -10,7 +10,11 @@ def concat(x):
 
 
 # insert ground mesh into a node
-def ground(node, position = None, scale = [1, 1, 1], mesh = 'ground' ):
+def ground(node, **kwargs):
+
+    position = kwargs.get('position', None)
+    scale = kwargs.get('scale', [1, 1, 1])
+    mesh = kwargs.get('mesh', 'ground')
 
     res = rigid.Body('ground')
     res.visual = path() + '/share/mesh/{}.obj'.format(mesh)

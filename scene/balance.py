@@ -390,9 +390,9 @@ def createScene(node):
     scene = pouf.tool.scene( node )
 
     num = node.createObject('pouf.pgs',
-                            nlnscg = False,
+                            nlnscg = True,
                             # anderson = 4,
-                            iterations = 30,
+                            iterations = 50,
                             threads = 1,
                             newmark = True,
                             precision = 0,
@@ -407,7 +407,7 @@ def createScene(node):
     ode.debug = 0
 
     # ground
-    ground = pouf.tool.ground(scene)
+    ground = pouf.tool.ground(scene, position = [0, 0.2, 0] )
     
     # robot
     robot = pouf.robot.Humanoid('robot' )
@@ -434,13 +434,13 @@ def createScene(node):
     gui.am.enabled.setChecked( True )
     gui.com.enabled.setChecked( True )
 
-    c = 1e-4
-    d = 10
+    c = 1e-3
+    d = 50
     
     p = {
         'am' : {
-            'compliance': 2 * c,
-            'damping': d / 2
+            'compliance': c,
+            'damping': d
         },
         'com' : {
             'compliance': c ,

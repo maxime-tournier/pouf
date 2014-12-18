@@ -9,6 +9,7 @@
 #include <sofa/simulation/common/MechanicalVisitor.h>
 
 #include <stdexcept>
+#include <utils/scoped.h>
 
 
 namespace tool {
@@ -30,7 +31,8 @@ struct printer {
 
 
 void mapping_graph::set(const std::vector<impl::vertex::mstate_type>& data) {
-
+  scoped::timer step("building graph");
+  
 	// reset
 	base tmp(data.size());
 	
@@ -42,9 +44,10 @@ void mapping_graph::set(const std::vector<impl::vertex::mstate_type>& data) {
 
 	// build initial graph
 	// complexity: n * ( log(n) + m * log(n) ) where n == data.size()
-	// and m is max connectivity
+	// and m is max connectivity (in degree)
 	for(unsigned i = 0, n = data.size(); i < n; ++i) {
 
+	    // log(n)
 		const unsigned vertex = find_insert(index, data[i], index.size());
 		tmp[vertex].mstate = data[i];
 		
@@ -72,7 +75,8 @@ void mapping_graph::set(const std::vector<impl::vertex::mstate_type>& data) {
 			const mstate_type p = dynamic_cast<mstate_type>(from[j]);
 
 			if( !p ) throw std::logic_error("non mechanical parent :-/");
-			
+
+			// log(n)
 			const unsigned parent_vertex = find_insert(index, p, index.size());
 			tmp[parent_vertex].mstate = p;
 
@@ -119,12 +123,12 @@ void mapping_graph::set(const std::vector<impl::vertex::mstate_type>& data) {
 	// final graph
 	base::operator=( base(n_mechanical) );
 
-	// unpruned -> pruned indices, -1 if none
+	// unpruned graph index -> pruned graph index, -1 if none
 	std::vector<unsigned> index_map(data.size(), -1);
 
 	// pruning: associate only mechanical vertices. note that we
 	// iterate in top-down order so that the final graph is naturally
-	// ordered so
+	// ordered like this
 	unsigned off = 0;
 	
 	for(unsigned i = 0, n = top_down.size(); i < n; ++i) {
@@ -138,22 +142,25 @@ void mapping_graph::set(const std::vector<impl::vertex::mstate_type>& data) {
 	}
 	assert( off == n_mechanical );
 
-	// pruning: adding edges
-	const edge_range edges = boost::edges(tmp);
-	for(graph::edge_iterator e = edges.first; e != edges.second; ++e) {
-
-		const unsigned src = index_map[ boost::source(*e, tmp) ];
-		if( src != -1 ) {
-			// mapped dof is mechanical, add edge
-			const unsigned dst = index_map[ boost::target(*e, tmp) ];
-			assert( dst != -1 );
-			
-			const edge_descriptor f = boost::add_edge(src, dst, *this).first;
-			(*this)[f] = tmp[*e];
+	// adding edges to pruned graph
+	for(unsigned i = 0, n = top_down.size(); i < n; ++i) {
+	  const unsigned vertex = top_down[i];
+	  const unsigned src = index_map[vertex];
+	  
+	  if( src != -1 ) {
+		const out_edge_range out_edges = boost::out_edges(vertex, tmp);
+		
+		for(out_edge_iterator e = out_edges.first; e != out_edges.second; ++e) {
+		  const unsigned dst = index_map[ boost::target(*e, tmp) ];
+		  assert( dst != -1 );
+		  
+		  const edge_descriptor f = boost::add_edge(src, dst, *this).first;
+		  (*this)[f] = tmp[*e];
 		}
+
+	  }
 	}
-
-
+	
 	// check graph is really ordered top-down
 	assert( (utils::dfs(*this, impl::printer()), true ) );
 	
@@ -183,11 +190,15 @@ struct dofs_recorder : sofa::simulation::MechanicalVisitor {
 
 
 void mapping_graph::set(sofa::core::objectmodel::BaseContext* context) {
+  scoped::timer step("mapping graph");
 
 	std::vector<mstate_type> dofs;
 	dofs_recorder vis(dofs);
-	
-	context->executeVisitor( &vis );
+
+	{
+	  scoped::timer step("visitor");
+	  context->executeVisitor( &vis );
+	}
 
 	set( dofs );
 }

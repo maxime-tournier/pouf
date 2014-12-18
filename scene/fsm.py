@@ -58,14 +58,26 @@ class StateGraph(pouf.control.FSM):
         self.servo.set('pos', pouf.pose.stand( math.pi / 14.0 ) )
         self.last = self.root.getTime()
 
+        self.servo.set('kp', { ('lankle', 0): 1e4,
+                                ('rankle', 0): 1e4 } )
+
     def enter_high(self):
         self.servo.set('pos', { ('lshoulder', 2): math.pi / 2,
                                 ('rshoulder', 2): -math.pi / 2 } )
+
+        self.servo.set('kd', { ('lshoulder', 2): 30,
+                                ('rshoulder', 2): 30} )
+        
         self.last = self.root.getTime()
 
     def enter_low(self):
+        # equivalent to:
+        self.servo.robot.lshoulder.pid[2].pos = math.pi / 14
+        self.servo.robot.rshoulder.pid[2].pos = -math.pi / 14
+        
         self.servo.set('pos', { ('lshoulder', 2): math.pi / 14,
                                 ('rshoulder', 2): -math.pi / 14 } )
+        
         self.last = self.root.getTime()
 
 
@@ -93,6 +105,7 @@ def createScene(node):
 
     # state machine
     fsm = StateGraph(servo, node)
+    fsm.debug = True
     
     # script
     script = Script()

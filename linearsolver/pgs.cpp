@@ -264,7 +264,7 @@ void pgs::solve_impl(vec& res,
 	unsigned k = 0, max = iterations.getValue();
 
 	// BECAUSE I SAY SO
-	if( correct ) max /= 2;
+	// if( correct ) max /= 2;
 	
 	vec primal;
 
@@ -290,12 +290,10 @@ void pgs::solve_impl(vec& res,
 	  // net = mapping_response * lambda;
 	  real estimate2 = step( lambda, net, sys, constant, error, delta, correct );
 
-	  
-
 	  if( nlnscg.getValue() ) {
 		f = ( lambda - lambda_prev ).array();
 		
-		const real beta = accel_nlnscg.step(lambda, f, vec::Ones(sys.n));
+		const real beta = accel_nlnscg.step(lambda, f, diagonal);
 
 		if( beta > 1 ) {
 		  Np = vec::Zero(sys.m);

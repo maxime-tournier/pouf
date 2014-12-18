@@ -4,6 +4,7 @@ from tool import concat
 
 # PID controllers, explicit and implicit
 
+import numpy as np
 
 class Explicit:
     def __init__(self, dofs, **args):

@@ -34,16 +34,17 @@ def createScene(node):
     scene = pouf.tool.scene( node )
 
     # numerical solver
-    num = node.createObject('pgs',
+    num = node.createObject('pouf.pgs',
                             iterations = 30,
-                            precision = 0)
+                            precision = 0,
+                            nlnscg = True)
     # ground 
     ground = pouf.tool.ground( scene )
 
     # robot
     robot = pouf.robot.Humanoid('robot')
     robot.insert( scene )
-
+    
     # pid controllers
     servo = pouf.control.PID(robot)
 
@@ -52,6 +53,16 @@ def createScene(node):
 
     # set desired pose
     servo.set('pos', pouf.pose.stand( math.pi / 16 ) )
+
+    # change the kp values for ankles
+    kp = {
+        ('lankle', 0): 100,
+        ('rankle', 0): 100,
+        
+    }
+
+    
+    servo.set('kp', kp )
     
     # script
     script = Script()
