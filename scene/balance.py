@@ -407,7 +407,7 @@ def createScene(node):
     ode.debug = 0
 
     # ground
-    ground = pouf.tool.ground(scene, position = [0, 0.2, 0] )
+    ground = pouf.tool.ground(scene)
     
     # robot
     robot = pouf.robot.Humanoid('robot' )
