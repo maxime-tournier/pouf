@@ -25,6 +25,22 @@ namespace math {
   };
 
 
+  struct anderson_new : anderson {
+
+	mat P;
+
+	mutable vec next_dual, next_primal, next_f;
+
+	anderson_new(unsigned n, unsigned m = 4);
+	void step(vec& dual, vec& primal, const vec& diag, const vec& unilateral);
+	void step_opt(vec& x, vec& primal, const vec& diag, const vec& unilateral);
+
+	mutable vec f;
+	
+	real df2;
+  };
+
+
 
 
 
