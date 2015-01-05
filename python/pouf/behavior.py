@@ -1,8 +1,10 @@
 
 import itertools
 
-seq = itertools.chain
-par = itertools.izip_longest
+from itertools import chain as seq
+from itertools import izip_longest as par
+
+import bisect
 
 
 memory = {}        
@@ -41,49 +43,73 @@ class Variable:
         return results(self, gen)
 
 
-
-# concurrent access
-locked = {}
-priority = {}
-
-import bisect
-
-class Cleanup: pass
+za
     
+    
+# resource is shared between generators while Context is per generator
+class Resource(object):
 
-# wraps the generator f(*args) for concurrent access to 'resource'
-# with priority 'p'
-def lock(resource, p, f):
+    def __init__(self):
+        self.queue = []
+        self.user = None
 
-    def res(*args):
-        self = f(*args)
+    class Context(object):
+        def __init__(self, resource):
+            self.resource = resource
 
-        if resource not in priority: priority[resource] = []
+        def __nonzero__(self):
+            return not self.release
 
-        bisect.insort(priority[resource], p)
-
-        try:
-            while True:
-
-                top = priority[resource][-1]
-
-                if resource not in locked and top == p:
-                    locked[resource] = self
-
-                # i have the lock
-                if resource in locked and locked[resource] == self:
-                    if top == p:
-                        yield self.next()
-                    else:
-                        # cleanup
-                        self.throw( StopIteration )
-                        yield
-                        while self.next(): yield
-                        del locked[resource]
-                else:
-                    yield
-        finally:
-            priority[resource].remove( p )
-            if resource in locked: del locked[resource]
+        def acquire(self, p):
+            bisect.insort(self.resource.queue, p)
+            self.priority = p
             
-    return res
+            on_top = self.resource.queue[-1] == p
+            
+            while not (self.resource.user is None and on_top):
+                if on_top: self.resource.user.release = True
+                yield
+
+            self.release = False
+            self.resource.user = self
+
+        def __del__(self):
+            self.resource.queue.remove( self.priority )
+            
+    def __enter__(self):
+        return Resource.Context(self)
+
+    def __exit__(self, *args):
+        self.user = None
+
+
+
+
+class FSM:
+    '''simple finite state machine based on generators'''
+
+    def __iter__(self):
+
+        lookup = {}
+        for cond, src, dest in self.transitions:
+            lookup.setdefault(src, []).append( (cond, dest) )
+        
+        current = self.start
+        gen = current()
+
+        yield next(gen)
+
+        while True:
+            for (cond, dest) in lookup[current]:
+                if cond():
+                    current = dest
+                    gen = current()
+
+                    print('cond', cond.__name__)
+                    print('state', current.__name__)
+
+                    break
+                
+            yield next( gen )
+
+

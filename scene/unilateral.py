@@ -17,9 +17,13 @@ mesh_path = pouf.path() + '/share/mesh'
 import pouf.plot
 
 
-import numpy as np
+from pysofa import core
+from SofaPython import console
 
+
+import numpy as np
 import random
+
 
 random.seed(14)
 
@@ -30,15 +34,18 @@ class Script:
         self.count = 0
     
     def onEndAnimationStep(self, dt):
-        every = int(0.10 / dt)
+        every = int(0.05 / dt)
 
-        if self.count % every == 0 and self.node.getTime() <= 15:
+        if self.count % every == 0 and self.node.getTime() <= 30:
             radius = 0.02
 
             rho = 1 + random.randrange(1000) / 10
             mass = 4/3 * math.pi * (radius * radius * radius)
             height = 0.7
-            ball(self.balls, [-0.0, height, -0.0], mass, radius)
+
+            vel = [0, -1, 0]
+
+            ball(self.balls, [-0.0, height, -0.0], mass, radius, vel)
             # box(self.balls, [0, 0.6, 0], mass, radius)
             
         self.count += 1
@@ -72,14 +79,18 @@ class Script:
 #     b.dofs.translation = pos
 #     return b
 
-def ball(node, pos, mass, radius = 0.5):
+def ball(node, pos, mass, radius = 0.5, vel = None):
 
     res = node.createChild('ball')
     
-    res.createObject('MechanicalObject', template = "Vec3d", position = concat(pos) )
+    dofs = res.createObject('MechanicalObject', template = "Vec3d", position = concat(pos) )
     res.createObject('UniformMass', tempalte = 'Vec3d', mass = mass)
     res.createObject('SphereModel', radius = radius)
 
+    if vel:
+        dofs.velocity = concat(vel)
+    
+    
     return res
 
 def box(node, pos, mass, radius = 0.5):
@@ -94,7 +105,7 @@ def box(node, pos, mass, radius = 0.5):
     res.inertia = res.scale * res.scale * mass
     
     res.insert( node )
-    
+
     return res.node
 
 
@@ -147,14 +158,17 @@ def createScene(node):
 
 
     num = node.createObject('pouf.jacobi',
-                            iterations = 50,
-                            precision = 1e-8,
-                            # nlnscg = True,
-                            accel_alt = 4,
-                            threads = 4,
-                            # accel = 4,
-                            #log = True
+                            iterations = 10,
+                            precision = 1e-5,
+                            homogenize = False,
+                            nlnscg = 0,
+                            anderson = 4,
+                            log = False,
+                            omega = 1,
     )
+
+    
+    
 
     node.createObject('LDLTResponse', regularize = 0)
     
@@ -167,7 +181,7 @@ def createScene(node):
     proximity.contactDistance = 0.001
     
     manager = node.getObject('manager')
-
+    
     manager.response = 'CompliantResponse'
     manager.responseParams = 'damping=0&compliance=0&restitution=0'
     
@@ -176,8 +190,6 @@ def createScene(node):
 
     
     # stack(scene, 20)
-    
-
     
     script = Script()
     script.qp = num
@@ -191,3 +203,71 @@ def createScene(node):
     bowl([0, 0.1, 0]).insert(scene)
     
     node.dt = 5e-3
+
+
+    # lcp callback
+
+    data = {}
+    
+    def process( info ):
+        t = node.getTime()
+
+        # correction
+        if 'time' not in data or data['time'] != t:
+            data['correction'] = info
+            data['time'] = t
+        else:
+            data['dynamics'] = info
+
+
+    def save( prefix ):
+
+        def write(f, row ):
+            f.write(' '.join( (str(x) for x in row) )) 
+            f.write('\n')
+
+        for what in ['correction', 'dynamics']:
+
+            # lcp
+            with open('{}.{}.lcp'.format(prefix, what), 'w') as f:
+                (M, q, d) = data[what]
+                n = q.size
+
+                write(f, [n])
+
+                for row in M: write(f, row)
+                write( f, q )
+
+            # ms
+            with open('{}.{}.lcp.ms'.format(prefix, what), 'w') as f:
+                write( f, d )
+                
+            
+    import ctypes
+    def array(obj, size, T = ctypes.c_double):
+        return ctypes.cast(obj._ptr_, ctypes.POINTER(T))[0:size]
+    
+    def cb(n, MM, qq, dd):
+
+        M = np.zeros( n * n )
+        q = np.zeros( n )
+        d = np.zeros( n )
+
+        M[:] = array(MM, n * n)
+        M = M.reshape( (n, n) )
+        
+        q[:] = array( qq, n )
+        d[:] = array( dd, n )
+
+        process( (M, q, d) )
+        
+    script.cb = cb
+    
+    num = core.sofa_object( num ).cast()
+    num = num.derived().cast()
+
+    num.log = True
+    # num.set_cb( cb )
+    
+    c = console.Console( locals() )
+    

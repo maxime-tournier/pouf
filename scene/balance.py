@@ -434,7 +434,7 @@ def createScene(node):
     gui.am.enabled.setChecked( True )
     gui.com.enabled.setChecked( True )
 
-    c = 1e-3
+    c = 5e-4
     d = 50
     
     p = {

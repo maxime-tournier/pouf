@@ -191,7 +191,7 @@ class Humanoid:
         collision = user.getChild('collision')
         
         for c in collision.getChildren():
-            if c.name == 'TTriangleModel contact points':
+            if c.name == 'contact points':
 
                 if other == None: return True
 
