@@ -182,11 +182,11 @@ struct assembly_visitor {
 			  }
 
 			  // geometric stiffness
-			  if( graph[*e].ks ) {
+			  if( graph[*e].k ) {
 				rmat& parent = result.H[ boost::target(*e, graph) ];
 					
 				// TODO optimize
-				peq_mult(parent, mparams_stiffness.kFactor(), graph[*e].k_block() );
+				peq_mult(parent, mparams_stiffness.kFactor(), graph[*e].k );
 			  }
 			}
 

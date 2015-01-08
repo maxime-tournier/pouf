@@ -41,17 +41,18 @@ namespace tool {
   namespace impl {
 	struct edge {
 	  typedef sofa::defaulttype::BaseMatrix* block_type;
+      typedef const sofa::defaulttype::BaseMatrix* const_block_type;
+        
 	  typedef sofa::vector< block_type > matrix_type;
 
 	  edge();
 	  
 	  const matrix_type* js;
-	  const matrix_type* ks;
-	  
+      const_block_type k;
+	  	  
 	  unsigned index;
 
 	  block_type j_block() const;
-	  block_type k_block() const;
 	};
 
 	struct vertex {
