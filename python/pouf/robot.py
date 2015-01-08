@@ -191,7 +191,7 @@ class Humanoid:
         collision = user.getChild('collision')
         
         for c in collision.getChildren():
-            if c.name == 'contact points':
+            if 'contact points' in c.name:
 
                 if other == None: return True
 
