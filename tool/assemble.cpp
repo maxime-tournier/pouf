@@ -209,7 +209,9 @@ struct assembly_visitor {
 		push_C(vertex, node, graph);
 		
 		push_J(vertex, node, graph);
-		
+
+		std::cout << node->name.getValue() << std::endl
+				  << result.J.back() << std::endl;
 	}
 
 };

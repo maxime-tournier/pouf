@@ -113,13 +113,13 @@ class SOFA_pouf_API LocalFrameMapping : public AssembledMapping<TIn, TOut> {
             typename se3::mat66 block = se3::dR( c, in_pos[ s ] );
 			
 			for(unsigned j = 0; j < 6; ++j) {
-				unsigned row = 6 * i + j;
+			  const unsigned row = 6 * i + j;
 				
 				J.startVec( row );
 				
 				for(unsigned k = 0; k < 6; ++k) {
-                    unsigned col = 6 * s + k;
-					J.insertBack(row, col) = block(j, k);
+                    const unsigned col = 6 * s + k;
+					if( block(j, k) ) J.insertBack(row, col) = block(j, k);
 				}
 			}			
  		}

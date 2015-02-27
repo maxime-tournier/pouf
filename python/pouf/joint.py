@@ -5,6 +5,8 @@ from tool import concat
 
 import rigid
 
+geometric_stiffness = 0
+
 class Base:
 
     def __init__(self, name = 'joint'):
@@ -16,7 +18,8 @@ class Base:
 
             # link constraints compliance
             self.compliance = 0
-                
+            self.stabilize = True
+
     def append(self, node, offset = None):
         self.body.append(node)
         self.offset.append(offset)
@@ -35,11 +38,13 @@ class Base:
         return sum( self.dofs )
 
         
-    def insert(self, parent):
+    def insert(self, parent, **kwargs):
         
         node = parent.createChild(self.name)
 
         self.offset_node = []
+
+        geometric = kwargs.get('geometric', geometric_stiffness)
         
         # build input data for multimapping
         input = []
@@ -56,7 +61,9 @@ class Base:
                 
                 joint.createObject('AssembledRigidRigidMapping', 
                                    template = "Rigid,Rigid",
-                                   source = '0 ' + str( o ) )
+                                   source = '0 ' + str( o ),
+                                   geometricStiffness = geometric)
+                
                 input.append( '@' + Tools.node_path_rel(node, b) + '/' + joint.name + '/dofs' )
                              
         assert len(input) > 0
@@ -66,12 +73,14 @@ class Base:
                                  name = 'dofs', 
                                  position = '0 0 0 0 0 0' )
 
-        map = node.createObject('RigidJointMultiMapping',
+        mapping = node.createObject('RigidJointMultiMapping',
                                 name = 'mapping', 
                                 template = 'Rigid,Vec6d', 
                                 input = concat(input),
                                 output = '@dofs',
-                                pairs = "0 0")
+                                pairs = "0 0",
+                                geometricStiffness = geometric
+        )
                 
         sub = node.createChild("constraints")
         
@@ -81,7 +90,7 @@ class Base:
 		
         mask = [ (1 - d) for d in self.dofs ]
         
-        map = sub.createObject('MaskMapping', 
+        mapping = sub.createObject('MaskMapping', 
                                name = 'mapping',
                                template = 'Vec6d,Vec1d',
                                input = '@../',
@@ -93,8 +102,9 @@ class Base:
                               template = 'Vec1d',
                               compliance = self.compliance)
 
-        stab = sub.createObject('Stabilization')
-
+        if self.stabilize:
+            stab = sub.createObject('Stabilization')
+        
         self.ff = ff
         self.node = node
         

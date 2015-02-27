@@ -29,7 +29,7 @@ def setup(servo, base = 5e2):
         ('rankle', 2): ankle,
         
         ('lshoulder', 0): soft,
-        ('lshoulder', 1): soft,
+        ('lshoulder', 1): stiff,
         ('lshoulder', 2): soft,
         
         ('rshoulder', 0): soft,

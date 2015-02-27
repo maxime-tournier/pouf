@@ -8,6 +8,8 @@ import numpy as np
 
 from tool import concat
 
+inertia_forces = False
+
 class Frame:
     # a rigid frame, group operations are available.
     
@@ -36,7 +38,8 @@ class Frame:
             
     def copy(self):
         res = Frame( np.copy( self.data))
-       
+        return res
+    
     def read(self, str):
         self.__dict__['data'] = map(float, str.split())
         return self
@@ -121,7 +124,7 @@ class Body:
         self.inertia = [1, 1, 1] # inertia tensor
         self.color = [1, 1, 1]   # not sure this is used 
         self.offset = None       # rigid offset for com/inertia axes
-        self.inertia_forces = False # compute inertia forces flag
+        self.inertia_forces = inertia_forces # compute inertia forces flag
         self.groups = []
         self.mu = 0           # friction coefficient
         self.scale = [1, 1, 1]
@@ -190,7 +193,7 @@ class Body:
 
         user.createObject('AssembledRigidRigidMapping',
                           template = 'Rigid,Rigid',
-                        source = '0 ' + str(off.inv()) )
+                          source = '0 ' + str(off.inv()) )
                 
         # visual model
         if self.visual != None:

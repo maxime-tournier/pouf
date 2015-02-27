@@ -22,7 +22,7 @@ def _make_rigid(name, mesh, position = None, density = 1000 ):
     res.collision = mesh
     res.mass_from_mesh( res.visual, density )
 
-    res.inertia_forces = False
+    res.inertia_forces = True
 
     if position != None:
         res.dofs.translation = position
@@ -39,7 +39,7 @@ class Humanoid:
             i.groups.append( len(self.groups))
 
     # TODO add some parameters yo
-    def __init__(self, name = 'robot'):
+    def __init__(self, name = 'robot', **kwargs):
 
         self.name = name
 
@@ -175,11 +175,14 @@ class Humanoid:
             self.inner_dofs += j.dim()
 
         # limits
-        self.lknee.lower_limit = 1e-1
-        self.rknee.lower_limit = 1e-1
+        limits = kwargs.get('limits', True)
+        
+        if limits:
+            self.lknee.lower_limit = 1e-1
+            self.rknee.lower_limit = 1e-1
 
-        self.lelbow.upper_limit = 1e-1
-        self.relbow.upper_limit = 1e-1
+            self.lelbow.upper_limit = 1e-1
+            self.relbow.upper_limit = 1e-1
 
         # self.lankle.upper_limit = math.pi / 6
         # self.rankle.upper_limit = math.pi / 6
