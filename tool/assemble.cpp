@@ -6,7 +6,7 @@
 #include <Eigen/Sparse>
 
 #include <sofa/simulation/common/Node.h>
-#include <sofa/component/linearsolver/SingleMatrixAccessor.h>
+#include <SofaBaseLinearSolver/SingleMatrixAccessor.h>
 
 #include <assembly/AssemblyHelper.h>
 #include <utils/scoped.h>

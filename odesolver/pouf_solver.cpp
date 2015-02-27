@@ -5,8 +5,8 @@
 // this is for propagate_visitor
 // #include <odesolver/AssembledSolver.h>
 
-#include <sofa/component/linearsolver/EigenSparseMatrix.h>
-#include <sofa/component/linearsolver/EigenVector.h>
+#include <SofaEigen2Solver/EigenSparseMatrix.h>
+#include <SofaEigen2Solver/EigenVector.h>
 #include <sofa/core/ObjectFactory.h>
 
 
@@ -46,7 +46,7 @@ namespace sofa {
 
 
 	  
-	  int pouf_solverClass = core::RegisterObject("Example compliance solver using assembly")
+    static int pouf_solverClass = core::RegisterObject("Example compliance solver using assembly")
 		.add< pouf_solver >()
 		.addAlias("pouf.solver");
 

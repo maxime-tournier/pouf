@@ -1,7 +1,7 @@
 #ifndef POUF_TOOL_SPARSE_H
 #define POUF_TOOL_SPARSE_H
 
-#include <sofa/component/linearsolver/EigenBaseSparseMatrix.h>
+#include <SofaEigen2Solver/EigenBaseSparseMatrix.h>
 #include <stdexcept>
 
 namespace tool {

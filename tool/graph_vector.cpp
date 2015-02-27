@@ -1,7 +1,8 @@
 #include "graph_vector.h"
 
 #include <sofa/core/behavior/BaseMechanicalState.h>
-#include <sofa/component/linearsolver/EigenBaseSparseMatrix.h>
+#include <SofaEigen2Solver/EigenBaseSparseMatrix.h>
+#include <SofaBaseLinearSolver/SingleMatrixAccessor.h>
 #include <sofa/simulation/common/Node.h>
 
 #include <tool/log.h>

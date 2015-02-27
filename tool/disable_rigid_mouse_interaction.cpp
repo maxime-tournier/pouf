@@ -1,6 +1,6 @@
 
 
-#include <sofa/component/collision/ComponentMouseInteraction.h>
+#include <SofaUserInteraction/ComponentMouseInteraction.h>
 
 
 namespace sofa {
