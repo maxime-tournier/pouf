@@ -130,7 +130,7 @@ void pgs::factor(const system_type& system) {
 
 	  // add diagonal C block
 	  for( unsigned r = 0; r < b.size; ++r) {
-		for(system_type::mat::InnerIterator it(system.C, b.offset + r); it; ++it) {
+		for(system_type::rmat::InnerIterator it(system.C, b.offset + r); it; ++it) {
 				
 		  // paranoia, i has it
 		  assert( it.col() >= int(b.offset) );

@@ -168,7 +168,7 @@ void jacobi::factor(const system_type& sys) {
   // compliance
   // TODO figure out precise convergence conditions apart from diagonal C
   for(int k = 0; k < sys.C.outerSize(); ++k) {
-  	for(mat::InnerIterator it(sys.C, k); it; ++it) {
+  	for(rmat::InnerIterator it(sys.C, k); it; ++it) {
 
   	  if( it.row() == it.col() ) {
   		diagonal(k) += it.value();

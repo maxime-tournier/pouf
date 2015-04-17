@@ -38,6 +38,7 @@ protected:
 						   const inverse_type& inv,
 						   chunk_type rhs) const;
 
+  typedef sofa::component::linearsolver::SequentialSolver::dmat dense_matrix;
   typedef Eigen::Map< dense_matrix > view_type;
   typedef Eigen::Map< const dense_matrix > const_view_type;
 
