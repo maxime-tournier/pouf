@@ -31,8 +31,8 @@ public:
   typedef sofa::component::linearsolver::SequentialSolver base;
   typedef system_type::cmat cmat;
   typedef system_type::rmat rmat;
-  typedef base::dmat dense_matrix;
-
+  // typedef base::dense_matrix dense_matrix;
+  typedef system_type::dmat dense_matrix;
   void reset();
 
 protected:

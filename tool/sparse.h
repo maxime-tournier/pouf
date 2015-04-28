@@ -4,6 +4,9 @@
 #include <SofaEigen2Solver/EigenBaseSparseMatrix.h>
 #include <stdexcept>
 
+#include <Compliant/utils/sparse.h>
+
+
 namespace tool {
 
 // applies Op on the good cast to an eigen matrix
@@ -68,7 +71,8 @@ struct op_prod {
   
   template<class M>
   void operator()(const M& m) const {
-	result = result + m * rhs;
+	sparse::fast_add_prod(result, m, rhs);
+	// result = result + m * rhs;
   }
 
 };

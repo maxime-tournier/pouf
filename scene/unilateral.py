@@ -17,7 +17,7 @@ mesh_path = pouf.path() + '/share/mesh'
 import pouf.plot
 
 
-from pysofa import core
+# from pysofa import core
 from SofaPython import console
 
 
@@ -34,7 +34,7 @@ class Script:
         self.count = 0
     
     def onEndAnimationStep(self, dt):
-        every = int(0.05 / dt)
+        every = int(0.045 / dt)
 
         if self.count % every == 0 and self.node.getTime() <= 30:
             radius = 0.02
@@ -116,7 +116,7 @@ def stack(node, n):
 
 
 def bowl(pos):
-    b = pouf.rigid.Body()
+    b = pouf.rigid.Body('bowl')
     b.collision = Sofa.src_dir() + '/share/mesh/SaladBowl.obj'
     b.mass_from_mesh( b.collision )
     b.dofs.translation = pos
@@ -157,27 +157,47 @@ def createScene(node):
     #                         filename = '/tmp/lcp')
 
 
-    num = node.createObject('pouf.jacobi',
-                            iterations = 10,
-                            precision = 1e-5,
-                            homogenize = False,
-                            nlnscg = 0,
-                            anderson = 4,
-                            log = False,
-                            omega = 1,
-    )
+    # num = node.createObject('pouf.jacobi',
+    #                         iterations = 10,
+    #                         precision = 1e-5,
+    #                         homogenize = False,
+    #                         nlnscg = 0,
+    #                         anderson = 4,
+    #                         log = False,
+    #                         omega = 1,
+    # )
 
     
     
 
-    node.createObject('LDLTResponse', regularize = 0)
-    
+    # node.createObject('LDLTResponse', regularize = 0)
+
+
     ode = node.getObject('ode')
-    ode.stabilization = True
-    ode.stabilization_damping = 1e-3
+    ode.debug = 0
+    ode.stabilization = 1
+    
+    node.removeObject(ode)
+    ode = node.createObject('CompliantImplicitSolver')
 
+    num = node.createObject('ModulusSolver',
+                            iterations = 30,
+                            precision = 1e-8,
+                            anderson = 2)
+
+    num = node.createObject('SequentialSolver',
+                            iterations = 30,
+                            precision = 1e-8)
+
+
+
+    # ode.stabilization = True
+    # ode.stabilization_damping = 1e-3
+
+
+    
     proximity = node.getObject('proximity')
-    proximity.alarmDistance = 0.0012
+    proximity.alarmDistance = 0.005
     proximity.contactDistance = 0.001
     
     manager = node.getObject('manager')
@@ -185,7 +205,7 @@ def createScene(node):
     manager.response = 'CompliantResponse'
     manager.responseParams = 'damping=0&compliance=0&restitution=0'
     
-    ground = pouf.tool.ground(scene, [0, 1, 0], [0.1, 0.1, 0.1] )
+    ground = pouf.tool.ground(scene, position = [0, 1, 0], scale = [0.1, 0.1, 0.1] )
 
 
     
@@ -203,7 +223,7 @@ def createScene(node):
     bowl([0, 0.1, 0]).insert(scene)
     
     node.dt = 5e-3
-
+    node.dt = 1e-2
 
     # lcp callback
 
@@ -261,12 +281,12 @@ def createScene(node):
 
         process( (M, q, d) )
         
-    script.cb = cb
+    # script.cb = cb
     
-    num = core.sofa_object( num ).cast()
-    num = num.derived().cast()
+    # num = core.sofa_object( num ).cast()
+    # num = num.derived().cast()
 
-    num.log = True
+    # num.log = True
     # num.set_cb( cb )
     
     c = console.Console( locals() )

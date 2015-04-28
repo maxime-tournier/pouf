@@ -15,11 +15,9 @@
 
 
 // SOFA_DECL_CLASS(SequentialSolver);
-int pgsClass = sofa::core::RegisterObject("pgs")
+static int pgsClass = sofa::core::RegisterObject("pgs")
   .add< pgs >()
   .addAlias("pouf.pgs");
-
-
 
 
 typedef sofa::component::linearsolver::Response response_type;
@@ -64,6 +62,8 @@ static void response_solve(thread::pool& pool,
 void pgs::factor(const system_type& system) { 
   scoped::timer timer("system factorization");
 
+  
+  
   if( log.getValue() ) {
     edit(convergence)->clear();
   }
@@ -181,16 +181,16 @@ static pgs::real track(const pgs::vec& prev,
 
   for(unsigned i = 0, n = delta.size(); i < n; ++i) {
 	  
-	  if( delta(i) ) {
-		const pgs::real value = - prev(i) / delta(i);
+	if( delta(i) ) {
+	  const pgs::real value = - prev(i) / delta(i);
 
-		if( value >= epsilon and value < alpha ) {
-		  alpha = value;
-		  if( index ) *index = i;
-		}
+	  if( value >= epsilon and value < alpha ) {
+		alpha = value;
+		if( index ) *index = i;
 	  }
+	}
 
-	};
+  };
 
   return alpha;
 }
@@ -214,6 +214,80 @@ void pgs::reset() {
 }
 
 
+// this is where the magic happens
+SReal pgs::step(vec& lambda,
+				vec& net, 
+				const system_type& sys,
+				const vec& rhs,
+				vec& error, vec& delta,
+				bool correct ) const {
+  
+  // TODO size asserts
+	
+  // error norm2 estimate (seems conservative and much cheaper to
+  // compute anyways)
+  real estimate = 0;
+
+		
+  // inner loop
+  for(unsigned i = 0, n = blocks.size(); i < n; ++i) {
+	
+	const block& b = blocks[i];
+			 
+	// data chunks
+	chunk_type lambda_chunk(&lambda(b.offset), b.size);
+	chunk_type delta_chunk(&delta(b.offset), b.size);
+	
+		
+	// if the constraint is activated, solve it
+	chunk_type error_chunk(&error(b.offset), b.size);
+
+	// update rhs TODO track and remove possible allocs
+	error_chunk.noalias() = rhs.segment(b.offset, b.size);
+	error_chunk.noalias() = error_chunk	- JP.middleRows(b.offset, b.size) * net;
+	error_chunk.noalias() = error_chunk - sys.C.middleRows(b.offset, b.size) * lambda;
+
+	// error estimate update, we sum current chunk errors
+	// estimate += error_chunk.squaredNorm();
+
+	// solve for lambda changes
+	solve_block(delta_chunk, blocks_inv[i], error_chunk);
+
+	// backup old lambdas
+	error_chunk = lambda_chunk;
+
+	// update lambdas
+	lambda_chunk = lambda_chunk + omega.getValue() * delta_chunk;
+
+	// project new lambdas if needed
+	if( b.projector ) {
+	  b.projector->project( lambda_chunk.data(), lambda_chunk.size(), i, correct );
+	  assert( !has_nan(lambda_chunk.eval()) );
+	}
+
+	// correct lambda differences based on projection
+	delta_chunk = lambda_chunk - error_chunk;
+        
+        
+	// we estimate the total lambda change. since GS convergence
+	// is linear, this can give an idea about current precision.
+	estimate += delta_chunk.squaredNorm();
+
+	// incrementally update net forces, we only do fresh
+	// computation after the loop to keep perfs decent
+	net.noalias() = net + mapping_response.middleCols(b.offset, b.size) * delta_chunk;
+	// net.noalias() = mapping_response * lambda;
+
+	// fix net to avoid error accumulations ?
+  }
+
+  return estimate;
+}
+
+
+
+
+
 void pgs::solve_impl(vec& res,
 					 const system_type& sys,
 					 const vec& rhs,
@@ -221,149 +295,119 @@ void pgs::solve_impl(vec& res,
 					 real damping) const {
   
 
-	assert( response );
+  assert( response );
 
-	// reset bench if needed
-	if( this->bench ) {
-		bench->clear();
-		bench->restart();
-	}
+  // reset bench if needed
+  if( this->bench ) {
+	bench->clear();
+	bench->restart();
+  }
 
-	// free velocity
-	vec tmp( sys.m );
+  // free velocity
+  vec tmp( sys.m );
 	
-	response->solve(tmp, sys.P.selfadjointView<Eigen::Upper>() * rhs.head( sys.m ) );
-	res.head(sys.m).noalias() = sys.P.selfadjointView<Eigen::Upper>() * tmp;
+  response->solve(tmp, sys.P.selfadjointView<Eigen::Upper>() * rhs.head( sys.m ) );
+  res.head(sys.m).noalias() = sys.P.selfadjointView<Eigen::Upper>() * tmp;
 	
-	// we're done lol
-	if( !sys.n ) return;
+  // we're done lol
+  if( !sys.n ) return;
 
 	
-	// lagrange multipliers TODO reuse res.tail( sys.n ) ?
-	vec lambda = res.tail(sys.n); 
+  // lagrange multipliers TODO reuse res.tail( sys.n ) ?
+  vec lambda = res.tail(sys.n); 
 
-	// net constraint velocity correction
-	vec net = mapping_response * lambda;
+  // net constraint velocity correction
+  vec net = mapping_response * lambda;
 	
-	// lambda change work vector
-	vec delta = vec::Zero( sys.n );
+  // lambda change work vector
+  vec delta = vec::Zero( sys.n );
 	
-	// lcp rhs 
-	vec constant = rhs.tail(sys.n) - JP * res.head( sys.m );
+  // lcp rhs 
+  vec constant = rhs.tail(sys.n) - JP * res.head( sys.m );
 
-	// lcp error (work vector)
-	vec error = vec::Zero( sys.n );
+  // lcp error (work vector)
+  vec error = vec::Zero( sys.n );
 	
-	const real epsilon = relative.getValue() ? 
-		constant.norm() * precision.getValue() : precision.getValue();
+  const real epsilon = relative.getValue() ? 
+	constant.norm() * precision.getValue() : precision.getValue();
 
-	if( this->bench ) this->bench->lcp(sys, constant, *response, lambda);
+  if( this->bench ) this->bench->lcp(sys, constant, *response, lambda);
 
+  
 
-	// outer loop
-	unsigned k = 0, max = iterations.getValue();
+  // outer loop
+  unsigned k = 0, max = iterations.getValue();
 
-	// BECAUSE I SAY SO
-	// if( correct ) max /= 2;
+  // BECAUSE I SAY SO
+  // if( correct ) max /= 2;
 	
-	vec primal;
+  vec primal;
 
-	vec lambda_prev;
+  vec lambda_prev;
 
-	vec f, net_prev, Ng, Np = vec::Zero(sys.m);
+  vec f, net_prev, Ng, Np = vec::Zero(sys.m);
 
-	// math::anderson_new accel_anderson(sys.n, anderson.getValue());
-	math::nlnscg accel_nlnscg(sys.n);
+  // math::anderson_new accel_anderson(sys.n, anderson.getValue());
+  math::nlnscg accel_nlnscg(sys.n);
 
-	unsigned s1 = convergence.getValue().size();
+  unsigned s1 = convergence.getValue().size();
  
-	for(k = 0; k < max; ++k) {
-	  
-	  // acceleration
-	  // if( anderson.getValue() ) {
-	  // 	// accel_anderson.step(lambda, primal, diagonal, unilateral_mask);
-	  // }
-	  
-	  lambda_prev = lambda;
-	  net_prev = net;
-
-	  // net = mapping_response * lambda;
-	  real estimate2 = step( lambda, net, sys, constant, error, delta, correct );
-
-	  if( nlnscg.getValue() ) {
-		f = ( lambda - lambda_prev ).array();
-		
-		const real beta = accel_nlnscg.step(lambda, f, diagonal);
-
-		if( beta > 1 ) {
-		  Np = vec::Zero(sys.m);
-		} else {
-		  Ng = net - net_prev;
-		  net += beta * Np;
-		  Np = beta * Np + Ng;
-		}
-
-	  }
-
-
-	  // if( nlnscg.getValue() ) {
-
-	  // 	const real grad_norm2_prev = grad_norm2;
-		
-	  // 	grad = -lambda + lambda_prev;
-	  // 	Ng = -net + net_prev;
-		
-	  // 	Grad_norm2 = grad.squaredNorm();
-
-	  // 	// conjugation
-	  // 	if( k > 0 and grad_norm2_prev) {
-			
-	  // 	  assert( grad_norm2_prev > std::numeric_limits<real>::epsilon() );
-	  // 	  const real beta = grad_norm2 / grad_norm2_prev;
-		  
-	  // 	  if( beta > 1 ) {
-	  // 		// restart
-	  // 		p.setZero();
-	  // 		Np.setZero();
-			
-	  // 	  } else {
-	  // 		// conjugation
-	  // 		lambda += beta * p;
-	  // 		net += beta * Np;
-
-	  // 		// net = mapping_response * lambda;
-
-	  // 		p = beta * p - grad;
-	  // 		Np = beta * Np - Ng;
-	  // 	  }
-	  // 	} else {
-	  // 	  // first iteration
-	  // 	  p = -grad;
-	  // 	  Np = -Ng;
-	  // 	}
-		
-	  // 	grad_prev.swap(grad);
-	  // }
-
-	  if( log.getValue() ) {
-		primal = JP * net - constant;
-		real error = lambda.cwiseMin(primal).norm();
-		edit(convergence)->push_back(error);
-		if( error <= epsilon ) break;
-	  } else { 
-		// stop if we only gain one significant digit after precision
-		if( std::sqrt(estimate2) / sys.n <= epsilon ) break;
-	  }
-	}
+  for(k = 0; k < max; ++k) {
 	
-	// std::cerr << "sanity check: " << (net - mapping_response * lambda).norm() << std::endl;
+	  
+	// acceleration
+	// if( anderson.getValue() ) {
+	// 	// accel_anderson.step(lambda, primal, diagonal, unilateral_mask);
+	// }
+	  
+	lambda_prev = lambda;
+	net_prev = net;
 
-	res.head( sys.m ) += net;
-	res.tail( sys.n ) = lambda;
 	
-	if(log.getValue()){
-	  edit(convergence)->push_back(convergence.getValue().size() - s1);
+	  
+	// net = mapping_response * lambda;
+	real estimate2 = step( lambda, net, sys, constant, error, delta, correct );
+
+	
+	// if( nlnscg.getValue() ) {
+	// 	f = ( lambda - lambda_prev ).array();
+		
+	// 	const real beta = accel_nlnscg.step(lambda, f, diagonal);
+
+	// 	if( beta > 1 ) {
+	// 	  Np = vec::Zero(sys.m);
+	// 	} else {
+	// 	  Ng = net - net_prev;
+	// 	  net += beta * Np;
+	// 	  Np = beta * Np + Ng;
+	// 	}
+
+	// }
+
+
+	
+	if( log.getValue() ) {
+	  primal = JP * net - constant;
+	  real error = lambda.cwiseMin(primal).norm();
+	  edit(convergence)->push_back(error);
+	  if( error <= epsilon ) break;
+	} else { 
+	  // stop if we only gain one significant digit after precision
+	  if( std::sqrt(estimate2) / sys.n <= epsilon ) break;
 	}
+  }
+
+  
+  // std::cerr << "sanity check: " << (net - mapping_response * lambda).norm() << std::endl;
+
+  res.head( sys.m ) += net;
+  res.tail( sys.n ) = lambda;
+	
+  if(log.getValue()){
+	edit(convergence)->push_back(convergence.getValue().size() - s1);
+  }
+
+  
 }
 
 pgs::pgs()
@@ -397,34 +441,34 @@ void pgs::correct(vec& res,
 
 void pgs::fetch_blocks(const system_type& system) {
   using namespace sofa;
-  
-	// TODO don't free memory ?
-	blocks.clear();
+
+  // TODO don't free memory ?
+  blocks.clear();
 	
-	unsigned off = 0;
+  unsigned off = 0;
 
-	// TODO parallelize
-	for(unsigned i = 0, n = system.compliant.size(); i < n; ++i) {
-		system_type::dofs_type* const dofs = system.compliant[i];
+  // TODO parallelize
+  for(unsigned i = 0, n = system.compliant.size(); i < n; ++i) {
+	system_type::dofs_type* const dofs = system.compliant[i];
 
-		const unsigned dim = dofs->getDerivDimension();
+	const unsigned dim = dofs->getDerivDimension();
 		
-		for(unsigned k = 0, max = dofs->getSize(); k < max; ++k) {
+	for(unsigned k = 0, max = dofs->getSize(); k < max; ++k) {
 			
-			block b;
+	  block b;
 
-			b.offset = off;
-			b.size = dim;
-            b.projector = dofs->getContext()->get<component::linearsolver::Constraint>( core::objectmodel::BaseContext::Local );
+	  b.offset = off;
+	  b.size = dim;
+	  b.projector = dofs->getContext()->get<component::linearsolver::Constraint>( core::objectmodel::BaseContext::Local );
 			
-            assert( !b.projector || b.projector->mask.empty() || b.projector->mask.size() == max );
-            b.activated = true;
+	  assert( !b.projector || b.projector->mask.empty() || b.projector->mask.size() == max );
+	  b.activated = true;
 			
 
-			blocks.push_back( b );
+	  blocks.push_back( b );
 
-			off += dim;
-		}
+	  off += dim;
 	}
+  }
 
 }

@@ -110,7 +110,8 @@ struct assembly_visitor {
 		for(unsigned i = 0, n = node->projectiveConstraintSet.size(); i < n; ++i){
 			node->projectiveConstraintSet[i]->projectMatrix(&tmp, 0);
 		}
-		
+
+		tmp.compressedMatrix.prune(0, 0);
 		result.P.push_back( tmp.compressedMatrix );
 	}
 
@@ -141,7 +142,7 @@ struct assembly_visitor {
 		}
 		
 		sqmat.compress();
-		result.H.push_back( sqmat.compressedMatrix.triangularView<Eigen::Upper>() );
+		result.H.push_back( sqmat.compressedMatrix.triangularView<Eigen::Lower>() );
 	}
 
 	
@@ -281,24 +282,35 @@ sofa::component::linearsolver::AssembledSystem assemble(const mapping_graph& gra
 	  
 	  typedef Eigen::Triplet<AssembledSystem::real> T;
 	  std::vector<T> triplets;
+	  triplets.reserve(sys.m);
 
-	  AssembledSystem::cmat tmp;
+	  AssembledSystem::rmat tmp1, tmp2, tmp;	  
 	  
 	  for(unsigned i = 0, n = boost::num_vertices(graph); i < n; ++i) {
 
         // response block
 		if( result.H[i].nonZeros() ) {
-		  tmp = (result.J[i].transpose() * result.H[i].selfadjointView<Eigen::Upper>() * result.J[i])
-			.triangularView<Eigen::Upper>();
+
+		  // sparse::fast_prod(tmp1,
+		  // 					result.H[i],
+		  // 					result.J[i]);
+							
+		  // tmp2 = result.J[i].transpose();
+
+		  // sparse::fast_prod(tmp, tmp2, tmp1);
+		  
+		  tmp = (result.J[i].transpose() * result.H[i].selfadjointView<Eigen::Lower>() * result.J[i])
+		  	// .triangularView<Eigen::Lower>();
+			;
 		  
 		  for (int k = 0; k < tmp.outerSize(); ++k) {
-			for (AssembledSystem::cmat::InnerIterator it(tmp, k); it; ++it) {
+			for (AssembledSystem::rmat::InnerIterator it(tmp, k); it; ++it) {
 			  triplets.push_back(T(it.row(), it.col(), it.value()));
 			}
 		  }
-		  
+
 		  // sys.H += (result.J[i].transpose() * result.H[i] * result.J[i])
-		  // 	.selfadjointView<Eigen::Upper>();
+		  // 	.triangularView<Eigen::Lower>();
 		}
 		
 	  }
@@ -319,7 +331,8 @@ sofa::component::linearsolver::AssembledSystem assemble(const mapping_graph& gra
 		sys.P.middleRows(offset, dim) = sofa::shifted_matrix(result.P[i], offset, dim);
 		offset += dim;
 	}
-	
+
+
 	// compliant dofs
 	sys.compliant.reserve( state.compliant.vertex.size() );
 	for(unsigned i = 0, n = state.compliant.vertex.size(), offset = 0; i < n; ++i) {

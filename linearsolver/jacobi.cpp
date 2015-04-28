@@ -17,7 +17,7 @@
 #include <math/nlnscg.h>
 
 // SOFA_DECL_CLASS(SequentialSolver);
-int jacobiClass = sofa::core::RegisterObject("jacobi")
+static int jacobiClass = sofa::core::RegisterObject("jacobi")
   .add< jacobi >()
   .addAlias("pouf.jacobi");
 

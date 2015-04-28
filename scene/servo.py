@@ -34,10 +34,16 @@ def createScene(node):
     scene = pouf.tool.scene( node )
 
     # numerical solver
-    num = node.createObject('pouf.pgs',
+    # num = node.createObject('pouf.pgs',
+    #                         iterations = 30,
+    #                         precision = 0,
+    #                         nlnscg = True)
+
+    num = node.createObject('SequentialSolver',
                             iterations = 30,
-                            precision = 0,
-                            nlnscg = True)
+                            precision = 0)
+    
+
     # ground 
     ground = pouf.tool.ground( scene )
 

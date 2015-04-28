@@ -38,7 +38,7 @@ protected:
 						   const inverse_type& inv,
 						   chunk_type rhs) const;
 
-  typedef sofa::component::linearsolver::SequentialSolver::dmat dense_matrix;
+  typedef system_type::dmat dense_matrix;
   typedef Eigen::Map< dense_matrix > view_type;
   typedef Eigen::Map< const dense_matrix > const_view_type;
 
@@ -53,6 +53,16 @@ protected:
 				  const vec& rhs,
 				  bool correct,
 				  real damping = 0) const;
+
+
+  real step(vec& lambda,
+			vec& net, 
+			const system_type& sys,
+			const vec& rhs,
+			vec& error, vec& delta,
+			bool correct ) const;
+
+
   
   // contiguous data for inverses
   vec inverse_storage;
