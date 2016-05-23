@@ -1,5 +1,8 @@
 import Sofa
+
 from Compliant import Tools
+from Compliant.types import Quaternion, Rigid3, vec
+import numpy as np
 
 from tool import concat
 
@@ -28,10 +31,9 @@ class Base:
     # convenience: define joint using absolute frame and vararg nodes
     def absolute(self, frame, *nodes):
         for n in nodes:
-            pos = n.getObject('dofs').position
-            s = concat(pos[0])
-            local = rigid.Frame().read( s )
-            self.append(n, local.inv() * frame)
+
+            local = np.array( n.getObject('dofs').position ).view(Rigid3)
+            self.append(n, local[0].inv() * frame)
         
     # joint dimension
     def dim(self):
@@ -61,7 +63,7 @@ class Base:
                 
                 joint.createObject('AssembledRigidRigidMapping', 
                                    template = "Rigid,Rigid",
-                                   source = '0 ' + str( o ),
+                                   source = '0 ' + concat( o ),
                                    geometricStiffness = geometric)
                 
                 input.append( '@' + Tools.node_path_rel(node, b) + '/' + joint.name + '/dofs' )

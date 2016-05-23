@@ -9,17 +9,16 @@ from pouf import tool
 path = pouf.path()
 
 
-
 def createScene(node):
     scene = pouf.tool.scene( node )
 
-    num = node.createObject('pgs',
+    num = node.createObject('SequentialSolver',
                             iterations = 30,
                             precision = 0)
 
     ode = node.getObject('ode')
     
-    ground = tool.ground(scene, [0, -0.5, 0] )
+    ground = tool.ground(scene, position = [0, -0.5, 0] )
     
     robot = pouf.robot.Humanoid('robot')
     robot.insert( scene )

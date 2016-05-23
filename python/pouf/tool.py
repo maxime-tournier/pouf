@@ -19,11 +19,11 @@ def ground(node, **kwargs):
     res = rigid.Body('ground')
     res.visual = path() + '/share/mesh/{}.obj'.format(mesh)
     res.collision = res.visual
-    res.dofs.translation = [0, -1.1, 0]
+    res.dofs.center = [0, -1.1, 0]
     res.scale = scale
     
-    if position != None:
-        res.dofs.translation += position
+    if position is not None:
+        res.dofs.center += position
         
     res.insert( node )
     res.node.createObject('FixedConstraint', 
@@ -46,12 +46,6 @@ def gravity(node):
     return np.array(node.gravity[0])
 
 
-def hat(x):
-    return np.array( [[0, -x[2], x[1]],
-                      [x[2], 0, -x[0]],
-                      [-x[1], x[0], 0]])
-
-
 
 
 
@@ -62,7 +56,6 @@ def scene(root):
 
     node = root
     node.createObject('RequiredPlugin', pluginName = "Compliant" )
-    node.createObject('RequiredPlugin', pluginName = "pouf" )
     
     node.dt = 0.005
     node.gravity = '0 -9.81 0'
@@ -90,7 +83,7 @@ def scene(root):
     
     scene = node.createChild('scene')
 
-    ode = node.createObject('pouf.solver',
+    ode = node.createObject('CompliantImplicitSolver',
                             name = 'ode',
                             warm_start = False,
                             stabilization = False,

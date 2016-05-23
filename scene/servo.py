@@ -40,8 +40,8 @@ def createScene(node):
     #                         nlnscg = True)
 
     num = node.createObject('SequentialSolver',
-                            iterations = 30,
-                            precision = 0)
+                            iterations = 100,
+                            precision = 1e-14)
     
 
     # ground 
@@ -62,9 +62,8 @@ def createScene(node):
 
     # change the kp values for ankles
     kp = {
-        ('lankle', 0): 100,
-        ('rankle', 0): 100,
-        
+        ('lankle', 0): 500,
+        ('rankle', 0): 500,
     }
 
     

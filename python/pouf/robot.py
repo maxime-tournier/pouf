@@ -24,8 +24,8 @@ def _make_rigid(name, mesh, position = None, density = 1000 ):
 
     res.inertia_forces = True
 
-    if position != None:
-        res.dofs.translation = position
+    if position is not None:
+        res.dofs.center = position
         
     return res
 
@@ -196,7 +196,7 @@ class Humanoid:
         for c in collision.getChildren():
             if 'contact points' in c.name:
 
-                if other == None: return True
+                if other is None: return True
 
                 # mapped by the two objects
                 d = c.getChildren()[0]
@@ -213,7 +213,7 @@ class Humanoid:
 
         res = scene.createChild( self.name )
 
-        frame = rigid.Frame()
+        frame = rigid.Rigid3()
 
         # insert segments
         for s in self.segments:
@@ -222,53 +222,53 @@ class Humanoid:
         # joint definition
         scale = 0.15
 
-        frame.translation = scale * np.array([1, self.height + 0.5, -1])
+        frame.center = scale * np.array([1, self.height + 0.5, -1])
         self.lankle.absolute(frame, self.ltibia.node, self.lfoot.node)
 
-        frame.translation = scale * np.array([1, self.height + 4, -1])
+        frame.center = scale * np.array([1, self.height + 4, -1])
         self.lknee.absolute(frame, self.lfemur.node, self.ltibia.node)
 
-        frame.translation = scale * np.array([-1, self.height + 0.5, -1])
+        frame.center = scale * np.array([-1, self.height + 0.5, -1])
         self.rankle.absolute(frame, self.rtibia.node, self.rfoot.node)
         
-        frame.translation = scale * np.array([-1, self.height + 4, -1])
+        frame.center = scale * np.array([-1, self.height + 4, -1])
         self.rknee.absolute(frame, self.rfemur.node, self.rtibia.node)
 
-        frame.translation = scale * np.array([1, self.height + 8, -1])
+        frame.center = scale * np.array([1, self.height + 8, -1])
         self.lhip.absolute(frame, self.body.node, self.lfemur.node)
 
-        frame.translation = scale * np.array([-1, self.height + 8, -1])
+        frame.center = scale * np.array([-1, self.height + 8, -1])
         self.rhip.absolute(frame, self.body.node, self.rfemur.node)
 
         # shoulders
-        frame.translation = scale * np.array([self.larm.dofs.translation[0] / scale,
+        frame.center = scale * np.array([self.larm.dofs.center[0] / scale,
                                               self.height + 12, -1])
         self.lshoulder.absolute(frame, self.body.node, self.larm.node)
 
-        frame.translation = scale * np.array([self.rarm.dofs.translation[0] / scale,
+        frame.center = scale * np.array([self.rarm.dofs.center[0] / scale,
                                               self.height + 12, -1])
         
         self.rshoulder.absolute(frame, self.body.node, self.rarm.node)
 
-        elbow = (self.larm.dofs.translation[1] + self.lforearm.dofs.translation[1])/ ( 2.0 * scale )
+        elbow = (self.larm.dofs.center[1] + self.lforearm.dofs.center[1])/ ( 2.0 * scale )
 
-        frame.translation = scale * np.array([self.larm.dofs.translation[0] / scale,
+        frame.center = scale * np.array([self.larm.dofs.center[0] / scale,
                                               elbow, -1])
         self.lelbow.absolute(frame, self.larm.node, self.lforearm.node)
 
-        frame.translation = scale * np.array([self.rarm.dofs.translation[0] / scale,
+        frame.center = scale * np.array([self.rarm.dofs.center[0] / scale,
                                               elbow, -1])
         self.relbow.absolute(frame, self.rarm.node, self.rforearm.node)
 
-        frame.translation = scale * np.array([0, self.height + 12.5, -1.3])
+        frame.center = scale * np.array([0, self.height + 12.5, -1.3])
         self.neck.absolute(frame, self.body.node, self.head.node)
 
         phal = 0.15
 
-        frame.translation = scale * np.array([1, self.height + 0, phal])
+        frame.center = scale * np.array([1, self.height + 0, phal])
         self.lphal.absolute(frame, self.lfoot.node, self.ltoe.node)
 
-        frame.translation = scale * np.array([-1, self.height + 0, phal])
+        frame.center = scale * np.array([-1, self.height + 0, phal])
         self.rphal.absolute(frame, self.rfoot.node, self.rtoe.node)
 
 
@@ -313,7 +313,7 @@ class Humanoid:
                  (1., self.ltoe),
                  (1., self.rtoe) ]
 
-        return sum([ x[0] * rigid.translation(x[1].node) for x in data] ) / sum([x[0] for x in data])
+        return sum([ x[0] * rigid.center(x[1].node) for x in data] ) / sum([x[0] for x in data])
 
     
     # center of mass
@@ -365,7 +365,7 @@ class Humanoid:
                     else:
                         res += theta * vec(p)
         # end loop
-        if res == None: 
+        if res is None: 
             return None
             
         return res / total
