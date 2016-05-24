@@ -9,11 +9,14 @@ import math
 
 # active point/force list, given a sofa node (created from pouf)
 def active( ground ):
+    
     collision = ground.getChild('user').getChild('collision')
     
     res = []
+    
     for cp in collision.getChildren():
-        dofs = cp.getObject('dofs')
+        dofs = cp.getMechanicalState()
+
         res.extend( [(vec(p), -vec(f)) 
                      for p, f in zip( dofs.position, dofs.force )
                      if np.dot(f, f) > 0

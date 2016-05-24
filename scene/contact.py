@@ -46,13 +46,14 @@ class Script:
         return 0
 
     def draw(self):
-
-        if self.polygon != None and len( self.polygon ) > 0:
+        
+        if self.polygon is not None and len( self.polygon ) > 0:
             pouf.contact.draw(self.active,
                               self.polygon,
                               self.com)
             
         return 0
+    
     
 # a simple scene demonstrating drawing, contact forces, support
 # polygon, and center of pressure
@@ -61,12 +62,16 @@ def createScene(node):
     # default scene node
     scene = pouf.tool.scene( node )
 
+    solver = 'SequentialSolver'
+    solver = 'ModulusSolver'
+    
     # numerical solver
-    num = node.createObject('pouf.pgs',
+    num = node.createObject(solver,
                             name = 'num',
-                            iterations = 50,
-                            precision = 0,
+                            iterations = 30,
+                            precision = 1e-8,
                             nlnscg = True)
+    
     # ground 
     ground = pouf.tool.ground( scene )
 

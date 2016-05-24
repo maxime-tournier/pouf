@@ -87,7 +87,7 @@ def scene(root):
                             name = 'ode',
                             warm_start = False,
                             stabilization = False,
-                            aggregate_lambdas = True)
+                            propagate_lambdas = True)
 
     # ode = node.createObject('CompliantImplicitSolver',
     #                         name = 'ode',

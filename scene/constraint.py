@@ -49,7 +49,7 @@ class Script:
 
     def draw(self):
 
-        if self.polygon != None and len( self.polygon ) > 0:
+        if self.polygon is not None and len( self.polygon ) > 0:
             pouf.contact.draw(self.active,
                               self.polygon,
                               self.com)
@@ -63,9 +63,10 @@ class Script:
 def createScene(node):
     scene = pouf.tool.scene( node )
     
-    num = node.createObject('pouf.pgs',
+    num = node.createObject('ModulusSolver',
                             iterations = 30,
-                            precision = 0)
+                            precision = 0,
+                            nlnscg = True)
 
     ode = node.getObject('ode')
 
@@ -86,10 +87,11 @@ def createScene(node):
     
     # constraint on joint angles: zero velocities
     dofs = [ robot.lshoulder.node.getObject('dofs') ]
+    
     constraint = pouf.control.Constraint('constraint', node, dofs, 3)
     
     # block dofs for all pids in joint lshoulder
-    for i in range(constraint.dim):
+    for i in range(constraint.rows):
         constraint.matrix[i, 3 + i] = 1
         constraint.value[i] = 0
 
