@@ -87,33 +87,34 @@ def createScene(node):
     
     # angular momentum constraint
     dofs = [ j.node.getObject('dofs') for j in robot.joints ]
+
+    script = Script()
+    pouf.script.insert( node, script )
     
     class AMConstraint(Compliant.tool.Constraint):
 
         def on_apply(self):
 
-            # com = robot.com()
-
+            com = robot.com()
+            am = robot.am( com )
+            
             # print self.jacobian[0]
             # print self.in_vel_stack()
-            print('ok')
+
             self.value[:] = np.zeros(3).reshape( (3, 1) )
+            u = self.in_vel_stack()
             
-            pass 
-            # am = robot.am( com )
-
-            # u = self.in_vel_stack()
-
-            # # update jacobian
-            # pouf.control.broyden(self.jacobian, u, am) 
+            # update jacobian
+            pouf.control.broyden(self.jacobian, u, am) 
+            self.jacobian += 1e-14
             
-
+            script.am = am
+            script.com = com
+            
     # TODO damping ? 
     constraint = AMConstraint('am_constraint', node, 3, input = dofs)
     
     # script
-    script = Script()
-    pouf.script.insert( node, script )
 
     script.robot = robot
     script.servo = servo

@@ -73,7 +73,8 @@ class Base:
         dofs = node.createObject('MechanicalObject', 
                                  template = 'Vec6d', 
                                  name = 'dofs', 
-                                 position = '0 0 0 0 0 0' )
+                                 position = '0 0 0 0 0 0',
+                                 velocity = '0 0 0 0 0 0')
 
         mapping = node.createObject('RigidJointMultiMapping',
                                 name = 'mapping', 
@@ -85,13 +86,17 @@ class Base:
         )
                 
         sub = node.createChild("constraints")
+
+        dim = sum(np.array(self.dofs) != 0)
         
         sub.createObject('MechanicalObject', 
                          template = 'Vec1d', 
-                         name = 'dofs')
-		
+                         name = 'dofs',
+                         position = concat( np.zeros(dim) ),
+                         velocity = concat( np.zeros(dim) ),
+        )
+	
         mask = [ (1 - d) for d in self.dofs ]
-        
         mapping = sub.createObject('MaskMapping', 
                                name = 'mapping',
                                template = 'Vec6d,Vec1d',

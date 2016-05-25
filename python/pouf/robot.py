@@ -1,6 +1,8 @@
 import Sofa
 from Compliant import Tools
 
+from Compliant.types import Quaternion, Rigid3, vec
+
 import tool
 import rigid
 import joint
@@ -11,7 +13,6 @@ from . import path
 from tool import concat
 
 import numpy as np
-from numpy import array as vec
 
 _mesh_path = path() + '/share/mesh'
 
@@ -51,62 +52,62 @@ class Humanoid:
 
         self.lfoot = _make_rigid('lfoot', 
                                 _mesh_path + '/foot.obj',
-                                scale * vec([1, height + 0, -0.95]) )
+                                scale * vec(1, height + 0, -0.95) )
 
         self.rfoot = _make_rigid('rfoot',
                                 _mesh_path + '/foot.obj',
-                                scale * vec( [-1, height + 0, -0.95] ))
+                                scale * vec( -1, height + 0, -0.95 ))
         
         self.ltibia = _make_rigid('ltibia',
                                  _mesh_path + '/leg.obj',
-                                 scale * vec( [1, height + 2.1, -1]))
+                                 scale * vec( 1, height + 2.1, -1))
 
         self.rtibia = _make_rigid( 'rtibia',
                                   _mesh_path + '/leg.obj',
-                                  scale * vec( [-1, height + 2.1, -1] ))
+                                  scale * vec( -1, height + 2.1, -1 ))
 
         self.lfemur = _make_rigid( 'lfemur',
                                   _mesh_path + '/leg.obj',
-                                  scale * vec( [1, height + 6, -1] ))
+                                  scale * vec( 1, height + 6, -1 ))
         
         self.rfemur = _make_rigid( 'rfemur',
                                   _mesh_path + '/leg.obj',
-                                  scale * vec( [-1, height + 6, -1] ))
+                                  scale * vec( -1, height + 6, -1 ))
         
         self.body = _make_rigid( 'body',
                                 _mesh_path + '/body.obj',
-                                scale * vec( [0, height + 10, -1] ))
+                                scale * vec( 0, height + 10, -1 ))
 
         arm_width = 1.7
         
         self.larm = _make_rigid( 'larm', 
                                 _mesh_path + '/arm.obj',
-                                scale * vec( [arm_width, height + 10.5, -1] ))
+                                scale * vec( arm_width, height + 10.5, -1 ))
 
         self.lforearm = _make_rigid( 'lforearm', 
                                     _mesh_path + '/arm.obj',
-                                    scale * vec( [arm_width, height + 7.5, -1] ))
+                                    scale * vec( arm_width, height + 7.5, -1 ))
 
         self.rarm = _make_rigid( 'rarm', 
                                 _mesh_path + '/arm.obj',
-                                scale * vec( [-arm_width, height + 10.5, -1] ))
+                                scale * vec( -arm_width, height + 10.5, -1 ))
 
         self.rforearm = _make_rigid( 'rforearm', 
                                     _mesh_path + '/arm.obj',
-                                    scale * vec( [-arm_width, height + 7.5, -1] ))
+                                    scale * vec( -arm_width, height + 7.5, -1 ))
 
 
         self.head = _make_rigid( 'head', 
                                 _mesh_path + '/head.obj',
-                                 scale * vec( [0, height + 13, -0.8] ))
+                                 scale * vec( 0, height + 13, -0.8 ))
         
         self.ltoe = _make_rigid('ltoe', 
                                _mesh_path + '/toe.obj',
-                               scale * vec([1, height + 0, 0.4]) )
+                               scale * vec(1, height + 0, 0.4) )
 
         self.rtoe = _make_rigid('rtoe', 
                                _mesh_path + '/toe.obj',
-                               scale * vec([-1, height + 0, 0.4]) )
+                               scale * vec(-1, height + 0, 0.4) )
 
         
         self.segments = [ self.ltoe, self.lfoot, self.ltibia, self.lfemur,
@@ -287,7 +288,10 @@ class Humanoid:
         res = np.zeros(3)
         
         for s in self.segments:
+            
             dofs = s.node.getObject('dofs')
+            assert dofs
+
             omega = dofs.velocity[0][-3:]
             v = dofs.velocity[0][:3]
 
@@ -301,7 +305,7 @@ class Humanoid:
             
             mu = quat.rotate(q, tmp)
         
-            res += vec(mu) + np.cross(vec(p) - vec(c), s.mass * vec(v) )
+            res += vec(*mu) + np.cross(vec(*p) - vec(*c), s.mass * vec(*v) )
             
         return res
 
@@ -321,7 +325,9 @@ class Humanoid:
         res = np.zeros(3)
         
         for s in self.segments:
-            pos = vec(s.node.getObject('dofs').position[0][:3])
+            dofs = s.node.getObject('dofs')
+            
+            pos = vec(*dofs.position[0][:3])
             res += s.mass * pos
             
         return res / self.mass
@@ -331,7 +337,7 @@ class Humanoid:
         res = np.zeros(3)
         
         for s in self.segments:
-            pos = vec(s.node.getObject('dofs').velocity[0][:3])
+            pos = vec(*s.node.getObject('dofs').velocity[0][:3])
             res += s.mass * pos
             
         return res / self.mass
@@ -356,14 +362,14 @@ class Humanoid:
             dofs = cp.getObject('dofs')
 
             for p, f in zip(dofs.position, dofs.force):
-                theta = vec(f).norm()
+                theta = vec(*f).norm()
                 total += theta
                 
                 if theta > 0:
                     if res == None:
-                        res = theta * vec(p)
+                        res = theta * vec(*p)
                     else:
-                        res += theta * vec(p)
+                        res += theta * vec(*p)
         # end loop
         if res is None: 
             return None
@@ -372,8 +378,8 @@ class Humanoid:
 
 
     def bad_cop(self, wrench):
-        force = vec(wrench[:3])
-        torque = vec(wrench[-3:])
+        force = vec(*wrench[:3])
+        torque = vec(*wrench[-3:])
         
         f = hat(force.data)
         Q = np.dot( f.transpose(), f)
@@ -391,7 +397,7 @@ class Humanoid:
 
         try:
             x = np.linalg.solve(kkt, rhs)
-            return vec(x[0:3])
+            return vec(*x[0:3])
         except np.linalg.LinAlgError:
             return None
 
