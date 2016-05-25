@@ -32,15 +32,7 @@ class Script:
         # obtain contact infos
         self.active = pouf.contact.active( self.ground.node )
         self.polygon = pouf.contact.polygon( self.active )
-        self.com = self.servo.robot.com()
 
-        # broyden update for am jacobian
-        self.am = self.servo.robot.am( self.com )
-        u = self.constraint.constrained_velocity()
-        pouf.control.broyden(self.constraint.matrix, u, self.am) 
-        
-        self.constraint.update()
-        
         return 0
 
     def onEndAnimationStep(self, dt):
@@ -57,7 +49,7 @@ class Script:
 
     def draw(self):
 
-        if self.polygon != None and len( self.polygon ) > 0:
+        if self.polygon is not None and len( self.polygon ) > 0:
             pouf.contact.draw(self.active,
                               self.polygon,
                               self.com)
@@ -71,9 +63,10 @@ class Script:
 def createScene(node):
     scene = pouf.tool.scene( node )
     
-    num = node.createObject('pouf.pgs',
-                            iterations = 30,
-                            precision = 0)
+    num = node.createObject('SequentialSolver',
+                            iterations = 42,
+                            precision = 0,
+                            nlnscg = True)
 
     ode = node.getObject('ode')
 
@@ -94,9 +87,29 @@ def createScene(node):
     
     # angular momentum constraint
     dofs = [ j.node.getObject('dofs') for j in robot.joints ]
-    constraint = pouf.control.Constraint('constraint', node, dofs, 3)
-    constraint.compliance = 1e-1
-    constraint.damping = 1
+    
+    class AMConstraint(Compliant.tool.Constraint):
+
+        def on_apply(self):
+
+            # com = robot.com()
+
+            # print self.jacobian[0]
+            # print self.in_vel_stack()
+            print('ok')
+            self.value[:] = np.zeros(3).reshape( (3, 1) )
+            
+            pass 
+            # am = robot.am( com )
+
+            # u = self.in_vel_stack()
+
+            # # update jacobian
+            # pouf.control.broyden(self.jacobian, u, am) 
+            
+
+    # TODO damping ? 
+    constraint = AMConstraint('am_constraint', node, 3, input = dofs)
     
     # script
     script = Script()
@@ -105,6 +118,5 @@ def createScene(node):
     script.robot = robot
     script.servo = servo
     script.ground = ground
-    script.constraint = constraint;
     
     return 0

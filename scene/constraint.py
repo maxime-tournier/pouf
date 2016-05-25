@@ -87,18 +87,17 @@ def createScene(node):
     
     # constraint on joint angles: zero velocities
     dofs = [ robot.lshoulder.node.getObject('dofs') ]
-    
-    constraint = pouf.control.Constraint('constraint', node, dofs, 3)
-    
-    # block dofs for all pids in joint lshoulder
-    for i in range(constraint.rows):
-        constraint.matrix[i, 3 + i] = 1
-        constraint.value[i] = 0
 
-    # note: you should update constraints whenever matrix/value
-    # change
-    constraint.update()
 
+    class Constraint(Compliant.tool.Constraint):
+
+        def on_init(self):
+
+            for i in xrange(self.dim):
+                self.jacobian[i, 3 + i] = 1
+                self.value[i] = 0
+                
+    constraint = Constraint('constraint', node, 3, input = dofs)
 
     # script
     script = Script()
